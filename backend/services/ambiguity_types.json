@@ -1,0 +1,195 @@
+{   "ambiguity_types": {
+      "lexical": {
+        "definition": "Occurs when a word has several meanings",
+        "subtypes": {
+          "homonymy": {
+            "definition": "When two different words have the same written and phonetic representation, but unrelated meanings and different etymologies",
+            "example": {
+              "text": "bank",
+              "interpretations": [
+                "An establishment for custody, loan, exchange, or issue of money",
+                "A rising ground bordering a lake, river, or sea"
+              ]
+            }
+          },
+          "polysemy": {
+            "definition": "When a word has several related meanings but one etymology",
+            "example": {
+              "text": "green",
+              "interpretations": [
+                "Of the color green",
+                "Pleasantly alluring",
+                "Youthful, vigorous",
+                "Not ripened or matured"
+              ]
+            }
+          }
+        }
+      },
+      
+      "syntactic": {
+        "definition": "Occurs when a given sequence of words can be given more than one grammatical structure",
+        "subtypes": {
+          "analytical": {
+            "definition": "When the role of the constituents within a phrase or sentence is ambiguous",
+            "example": {
+              "text": "The Tibetan history teacher",
+              "interpretations": [
+                "The (Tibetan history) teacher",
+                "The Tibetan (history teacher)"
+              ]
+            }
+          },
+          "attachment": {
+            "definition": "When a particular syntactic constituent can be legally attached to two parts of a sentence",
+            "example": {
+              "text": "The police shot the rioters with guns",
+              "interpretations": [
+                "The police used guns to shoot the rioters",
+                "The police shot rioters who were armed with guns"
+              ]
+            }
+          },
+          "coordination": {
+            "definition": "When multiple conjunctions are used or when one conjunction is used with a modifier",
+            "examples": [
+              {
+                "text": "I saw Peter and Paul and Mary saw me",
+                "interpretations": [
+                  "I saw (Peter and Paul) and Mary saw me",
+                  "I saw Peter and (Paul and Mary saw me)"
+                ]
+              }
+            ]
+          },
+          "elliptical": {
+            "definition": "When it is not certain whether or not a sentence contains an omitted element",
+            "example": {
+              "text": "Perot knows a richer man than Trump",
+              "interpretations": [
+                "Perot knows a man who is richer than Trump is",
+                "Perot knows a man who is richer than any man Trump knows"
+              ]
+            }
+          }
+        }
+      },
+      
+      "semantic": {
+        "definition": "Occurs when a sentence has more than one way of reading it within its context although it contains no lexical or structural ambiguity",
+        "subtypes": {
+          "scope": {
+            "definition": "When quantifiers can have different scoping relations",
+            "example": {
+              "text": "All rooms have a window",
+              "interpretations": [
+                "There is one window shared by all rooms",
+                "Each room has its own window"
+              ]
+            }
+          }
+        }
+      },
+  
+      "pragmatic": {
+        "definition": "Occurs when a sentence has several meanings in the context in which it is uttered",
+        "subtypes": {
+          "referential": {
+            "definition": "When an anaphor can take its reference from more than one element",
+            "example": {
+              "text": "The trucks shall treat the roads before they freeze",
+              "interpretations": [
+                "Before the trucks freeze",
+                "Before the roads freeze"
+              ]
+            }
+          },
+          "deictic": {
+            "definition": "When pronouns, time and place adverbs have more than one reference point in context",
+            "example": {
+              "text": "Every student thinks she is a genius",
+              "interpretations": [
+                "Each female student thinks she herself is a genius",
+                "Each student thinks some specific woman is a genius"
+              ]
+            }
+          }
+        }
+      },
+  
+      "vagueness": {
+        "definition": "A statement is considered vague if it admits borderline cases",
+        "subtypes": {
+          "measurement": {
+            "definition": "When terms lack precise measurement criteria",
+            "example": {
+              "text": "fast response time",
+              "interpretations": [
+                "Under 1 second",
+                "Under 1 minute",
+                "Faster than the previous system"
+              ]
+            }
+          },
+          "classification": {
+            "definition": "When category membership is unclear",
+            "example": {
+              "text": "tall person",
+              "interpretations": [
+                "Tall for a child",
+                "Tall for an adult",
+                "Tall for a basketball player"
+              ]
+            }
+          }
+        }
+      },
+  
+      "generality": {
+        "definition": "Terms that can be made more precise when necessary",
+        "subtypes": {
+          "role": {
+            "definition": "When a term covers multiple specific roles",
+            "example": {
+              "text": "cousin",
+              "interpretations": [
+                "Male cousin",
+                "Female cousin",
+                "First cousin",
+                "Second cousin"
+              ]
+            }
+          },
+          "scope": {
+            "definition": "When the scope of application is unspecified but can be clarified",
+            "example": {
+              "text": "user access",
+              "interpretations": [
+                "Read access",
+                "Write access",
+                "Admin access",
+                "Limited access"
+              ]
+            }
+          }
+        }
+      },
+  
+      "language_error": {
+        "definition": "When grammatical mistakes lead to text being interpreted differently than intended",
+        "subtypes": {
+          "number_agreement": {
+            "definition": "When singular/plural agreement creates confusion",
+            "example": {
+              "text": "Every light has their switch",
+              "interpretations": [
+                "Each light has its own switch",
+                "All lights share the same switch",
+                "All lights share multiple switches"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }

@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+spacy
+textblob
+nltk
+fastapi-cors
+transformers
+openai
