@@ -140,6 +140,9 @@ const AmbiguityClarificationIntervention = ({ intervention, onApply, onDismiss }
 
 const InconsistencyIntervention = ({ intervention, onApply, onDismiss }) => {
   const { segments } = useSurveyStore();
+  const [showEdit, setShowEdit] = useState(false);
+  const [editingText, setEditingText] = useState('');
+  const [editingType, setEditingType] = useState(null); // 'current' or 'previous'
   
   const previousSegment = segments[intervention.previous_segment.uuid];
   const prevQuestionIdx = previousSegment?.questionIdx ?? intervention.previous_segment.questionIdx;
@@ -156,26 +159,60 @@ const InconsistencyIntervention = ({ intervention, onApply, onDismiss }) => {
           </p>
           <p className="mt-1">"{intervention.previous_segment.text}"</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => onApply('editPrevious')}
-            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors"
-          >
-            Edit Previous
-          </button>
-          <button
-            onClick={() => onApply('editCurrent')}
-            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors"
-          >
-            Edit Current
-          </button>
-          <button
-            onClick={onDismiss}
-            className="px-3 py-1.5 hover:bg-red-100 rounded text-sm transition-colors"
-          >
-            Dismiss
-          </button>
-        </div>
+        
+        {!showEdit ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setEditingType('previous');
+                setShowEdit(true);
+              }}
+              className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors"
+            >
+              Edit Previous
+            </button>
+            <button
+              onClick={() => {
+                setEditingType('current');
+                setShowEdit(true);
+              }}
+              className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors"
+            >
+              Edit Current
+            </button>
+            <button onClick={onDismiss} className="px-3 py-1.5 hover:bg-red-100 rounded text-sm transition-colors">
+              Dismiss
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <textarea
+              className="w-full p-2 text-sm border rounded"
+              rows={3}
+              value={editingText}
+              onChange={(e) => setEditingText(e.target.value)}
+              placeholder={`Type your revised ${editingType === 'current' ? 'current' : 'previous'} statement...`}
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowEdit(false);
+                  setEditingText('');
+                }}
+                className="px-3 py-1.5 text-sm hover:bg-red-100 rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onApply(editingType === 'current' ? 'editCurrent' : 'editPrevious', editingText)}
+                disabled={!editingText.trim()}
+                className="px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 rounded transition-colors disabled:opacity-50"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -200,23 +237,38 @@ const InterventionDisplay = ({ uuid }) => {
   console.log('🎯 [Display] Rendering interventions for UUID:', uuid, 
     'Count:', activeInterventions.length);
     
-  const handleApply = async (interventionId, selectedText) => {
+  // Handle ambiguity cases (both multiple choice and clarification)
+  const handleAmbiguityApply = async (interventionId, selectedText, triggerPhrase) => {
     try {
-      const intervention = activeInterventions.find(i => i.id === interventionId);
-      if (!intervention) return;
-
-      if (intervention.type === 'ambiguity_multiple_choice' || intervention.type === 'ambiguity_clarification') {
-        const currentText = segments[uuid]?.text;
-        if (!currentText) return;
-        const newText = currentText.replace(
-          intervention.trigger_phrase, 
-          selectedText
-        );
-        updateSegment(uuid, newText);
-      }
-      await respondToIntervention(interventionId, 'applied');
+      const currentText = segments[uuid]?.text;
+      if (!currentText) return;
+      
+      const newText = currentText.replace(triggerPhrase, selectedText);
+      await respondToIntervention(interventionId, 'applied', newText);
     } catch (err) {
-      setError('Failed to apply intervention.');
+      setError('Failed to apply ambiguity intervention.');
+    }
+  };
+
+  // Handle inconsistency cases with text editing
+  const handleInconsistencyApply = async (interventionId, prevUuid, action, newText) => {
+    try {
+      if (action === 'editCurrent') {
+        // Update the current segment text
+        await respondToIntervention(interventionId, 'applied', newText);
+      } else if (action === 'editPrevious') {
+        //Debugging
+        console.log('Editing Previous - before respondToIntervention:', {
+          interventionId,
+          prevUuid,
+          newText
+        });
+        // Update the previous segment text
+        await respondToIntervention(interventionId, 'applied', newText, prevUuid);
+      }
+    } catch (err) {
+      console.error('Detailed error in handleInconsistencyApply:', err)
+      setError('Failed to apply inconsistency intervention.');
     }
   };
 
@@ -232,19 +284,32 @@ const InterventionDisplay = ({ uuid }) => {
               intervention.type === 'ambiguity_multiple_choice' ? (
                 <AmbiguityChoiceIntervention
                   intervention={intervention}
-                  onApply={(text) => handleApply(intervention.id, text)}
+                  onApply={(text) => handleAmbiguityApply(
+                    intervention.id, 
+                    text, 
+                    intervention.trigger_phrase
+                  )}
                   onDismiss={() => respondToIntervention(intervention.id, 'dismissed')}
                 />
               ) : intervention.type === 'ambiguity_clarification' ? (
                 <AmbiguityClarificationIntervention
                   intervention={intervention}
-                  onApply={(text) => handleApply(intervention.id, text)}
+                  onApply={(text) => handleAmbiguityApply(
+                    intervention.id, 
+                    text, 
+                    intervention.trigger_phrase
+                  )}
                   onDismiss={() => respondToIntervention(intervention.id, 'dismissed')}
                 />
               ) : intervention.type === 'consistency' ? (
                 <InconsistencyIntervention
                   intervention={intervention}
-                  onApply={() => handleApply(intervention.id, 'revise')}
+                  onApply={(action, newText) => handleInconsistencyApply(
+                    intervention.id,
+                    intervention.previous_segment.uuid, // prevUuid
+                    action,
+                    newText
+                  )}
                   onDismiss={() => respondToIntervention(intervention.id, 'dismissed')}
                 />
               ) : null
