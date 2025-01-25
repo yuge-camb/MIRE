@@ -195,27 +195,73 @@ export const useSurveyStore = create(
         }]
       })),
 
-      respondToIntervention: (interventionId, response, newText = null) => set(state => {
+      // Intervention Management
+      respondToIntervention: (interventionId, response, newText = null, targetUuid = null) => set(state => {
+        //debugging
+        console.log('respondToIntervention called with:', {
+          interventionId,
+          response,
+          newText,
+          targetUuid
+        });
+        // Always update intervention status
         const updatedInterventions = state.interventions.map(int =>
           int.id === interventionId
             ? { ...int, response, responseTime: Date.now() }
             : int
         );
 
-        if (newText) {
-          const intervention = state.interventions.find(i => i.id === interventionId);
-          if (intervention) {
-            const uuid = Object.keys(state.segments).find(id => 
-              state.segments[id].questionIdx === intervention.questionIdx && 
-              state.segments[id].segmentIdx === intervention.segmentIdx
-            );
-            if (uuid) {
-              state.segments[uuid].text = newText;
-            }
-          }
+        // If no text update needed, just return intervention update
+        if (!newText) {
+          return { interventions: updatedInterventions };
         }
 
-        return { interventions: updatedInterventions };
+        // Find the intervention to get context
+        const intervention = state.interventions.find(i => i.id === interventionId);
+        //debugging
+        console.log('Found intervention:', intervention);
+        if (!intervention) {
+          return { interventions: updatedInterventions };
+        }
+
+        // Determine which UUID to update
+        const uuid = targetUuid || intervention.uuid;
+        const segment = state.segments[uuid];
+        //debugging
+        console.log('Segment update attempt:', {
+          targetUuid,
+          finalUuid: uuid,
+          segmentFound: !!segment,
+          segment
+        });
+
+        if (!segment) {
+          return { interventions: updatedInterventions };
+        }
+
+        // Update both segments and answers with new text
+        return {
+          interventions: updatedInterventions,
+          segments: {
+            ...state.segments,
+            [uuid]: {
+              ...segment,
+              text: newText
+            }
+          },
+          answers: {
+            ...state.answers,
+            [segment.questionIdx]: {
+              ...state.answers[segment.questionIdx],
+              [segment.segmentIdx]: newText
+            }
+          },
+          // Clear lastAnalyzedText to ensure it gets analyzed on next segment change
+          lastAnalyzedTexts: {
+            ...state.lastAnalyzedTexts,
+            [uuid]: undefined
+          }
+        };
       }),
 
       addInterventions: (uuid, newInterventions) => 
@@ -228,15 +274,6 @@ export const useSurveyStore = create(
               response: null
             }))
           ]
-        })),
-
-      respondToIntervention: (interventionId, response) => 
-        set(state => ({
-          interventions: state.interventions.map(int =>
-            int.id === interventionId 
-              ? { ...int, response }
-              : int
-          )
         })),
 
       // Debug Helpers

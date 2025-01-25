@@ -26,6 +26,16 @@ const TextSegment = ({ questionId, segmentId }) => {
   const handleTextChange = (e) => {
     const newText = e.target.value;
     setAnswer(questionId, currentSegmentIdx, newText, uuid);
+    // setActiveEditingSegment(uuid);
+  };
+
+  const handleBlur = () => {
+    // Called when leaving/unfocusing from this segment
+    setActiveEditingSegment(null);  
+  };
+
+  const handleFocus = () => {
+    // Called when focusing on this segment
     setActiveEditingSegment(uuid);
   };
 
@@ -40,6 +50,8 @@ const TextSegment = ({ questionId, segmentId }) => {
           <textarea
             value={text}
             onChange={handleTextChange}
+            onBlur={handleBlur}    
+            onFocus={handleFocus}  
             className="w-full p-3 border rounded min-h-[100px] resize-y"
             placeholder="Enter your response..."
           />
