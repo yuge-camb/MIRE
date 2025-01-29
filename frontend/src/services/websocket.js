@@ -109,6 +109,15 @@ export class WebSocketService {
             ...data.intervention
           });
           break;
+        
+        case 'intervention_status':
+          // Handle intervention status updates
+          break;
+  
+        case 'analysis_cancelled':
+          // Handle cancelled analysis confirmation
+          this.store.setAnalysisStatus(data.uuid, 'cancelled');
+          break;
 
         default:
           console.warn('Unknown message type:', data.type);
@@ -154,7 +163,6 @@ export class WebSocketService {
 
   sendMessage(message) {
     console.log('Sending WebSocket message:', message);
-
     if (this.ws?.readyState !== WebSocket.OPEN) {
       console.log('WebSocket not open, queueing message');
       if (this.status === 'connecting') {
@@ -185,32 +193,32 @@ export class WebSocketService {
     return this.status;
   }
 
-  sendAnalysisRequest(data) {
-    // Convert segments to dictionary format
-    console.log('🔄 [Frontend] Sending analysis request:', {
-        uuid: data.uuid,
-        text: data.text,
-        questionIdx: data.questionIdx,
-        segmentIdx: data.segmentIdx
-    });
-    const all_segments = {};
-    Object.entries(this.store.segments).forEach(([uuid, segment]) => {
-        all_segments[uuid] = {
-            text: segment.text,
-            question_idx: segment.questionIdx,
-            segment_idx: segment.segmentIdx
-        }
-    });
+  // sendAnalysisRequest(data) {
+  //   // Convert segments to dictionary format
+  //   console.log('🔄 [Frontend] Sending analysis request:', {
+  //       uuid: data.uuid,
+  //       text: data.text,
+  //       questionIdx: data.questionIdx,
+  //       segmentIdx: data.segmentIdx
+  //   });
+  //   const all_segments = {};
+  //   Object.entries(this.store.segments).forEach(([uuid, segment]) => {
+  //       all_segments[uuid] = {
+  //           text: segment.text,
+  //           question_idx: segment.questionIdx,
+  //           segment_idx: segment.segmentIdx
+  //       }
+  //   });
 
-    this.sendMessage({
-        type: 'segment_update',
-        uuid: data.uuid,
-        text: data.text,
-        question_idx: data.questionIdx,     
-        segment_idx: data.segmentIdx,       
-        all_segments                        
-    });
-  }
+  //   this.sendMessage({
+  //       type: 'segment_update',
+  //       uuid: data.uuid,
+  //       text: data.text,
+  //       question_idx: data.questionIdx,     
+  //       segment_idx: data.segmentIdx,       
+  //       all_segments                        
+  //   });
+  // }
 
   sendChatMessage(questionId, message) {
     this.sendMessage({
@@ -220,15 +228,15 @@ export class WebSocketService {
     });
   }
 
-  sendSegmentUpdate(uuid, data) {
-    this.sendMessage({
-      type: 'segment_update',
-      uuid,
-      question_idx: data.questionIdx,     
-      segment_idx: data.segmentIdx,       
-      text: data.text
-    });
-  }
+  // sendSegmentUpdate(uuid, data) {
+  //   this.sendMessage({
+  //     type: 'segment_update',
+  //     uuid,
+  //     question_idx: data.questionIdx,     
+  //     segment_idx: data.segmentIdx,       
+  //     text: data.text
+  //   });
+  // }
 
   sendSegmentDelete(uuid) {
     this.sendMessage({
@@ -237,12 +245,27 @@ export class WebSocketService {
     });
   }
 
-  sendInterventionResponse(uuid, interventionId, response) {
-    return this.sendMessage({
+  sendInterventionResponse(uuid, interventionId, response, newText = null) {
+    this.sendMessage({
       type: 'intervention_response',
       uuid,
       interventionId,
-      response
+      response,
+      newText
+    });
+  }
+  
+  cancelAnalysis(uuid) {
+    this.sendMessage({
+      type: 'analysis_cancel',
+      uuid
+    });
+  }
+  
+  clearAnalysisQueue(uuid) {
+    this.sendMessage({
+      type: 'analysis_queue_clear',
+      uuid
     });
   }
 

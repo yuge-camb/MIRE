@@ -71,10 +71,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     all_segments=session_state["segments"]
                 )
 
-            elif data["type"] == "cancel_analysis":
-                uuid = data["uuid"]
-                analysis_service.cancel_analysis(uuid)
-
             # Handle other message types as needed
 
     except WebSocketDisconnect:

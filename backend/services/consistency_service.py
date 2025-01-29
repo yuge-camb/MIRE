@@ -30,6 +30,7 @@ class ConsistencyService:
             
             async with asyncio.Lock():  # Protect model inference
                 with torch.no_grad():
+                    # runs model inference for pairwise consistency check
                     for prev_segment in previous_segments:
                         await asyncio.sleep(0)  # Allow other tasks
                         logging.info(f"🔄 [Consistency] Starting check for UUID={current_segment['uuid']} against {len(previous_segments)} previous segments")

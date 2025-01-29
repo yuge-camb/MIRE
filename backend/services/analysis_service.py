@@ -21,35 +21,45 @@ class AnalysisService:
         
         # Use single asyncio.Queue for analysis requests
         self.queue = asyncio.Queue()
-        self.is_processing = False  # Flag to track if we're currently processing
+        self.is_processing = False  # Flag to track if there is something currently being processed in the queue
         self.currently_processing = None  # Track UUID currently being processed
         self.discard_results = set()  # Set to track UUIDs whose results should be discarded
         self.analysis_status = {}
         self.active_interventions = {}
         self.segments = {}
+        self.analysis_results = {}
 
-    def cancel_analysis(self, uuid: str):
-        """Mark analysis as cancelled and clean up state"""
-        logging.info(f"❌ [Analysis] Cancelling analysis for UUID: {uuid}")
-        
-        # If currently processing, flag to discard results
+    async def _cancel_existing_analysis(self, uuid):
+        """Internal method to handle cancellation logic
+
+        Handles old analysis at various stages:
+        1. In queue: Directly removed from queue
+        2. Currently being processed: Added to discard_results set (checked in _process_queue)
+        - Analysis will complete but results won't be sent 
+        - Any consistency interventions referencing this segment will be filtered
+        3. Completed but not sent: Results will be dropped (via discard_results check in _handle_analysis_result)
+        """
+        # Mark for discard if currently processing
         if uuid == self.currently_processing:
             self.discard_results.add(uuid)
-            
-        # Clear states
-        self.analysis_status.pop(uuid, None)
-        self.active_interventions.pop(uuid, None)
+            logging.info(f"⚠️ [Analysis] Marking current analysis for discard: UUID={uuid}")
         
         # Remove from queue if present
         temp_queue = asyncio.Queue()
         while not self.queue.empty():
-            request = self.queue.get_nowait()
+            request = await self.queue.get()
             if request.uuid != uuid:
-                temp_queue.put_nowait(request)
+                await temp_queue.put(request)
+            else:
+                logging.info(f"🗑️ [Analysis] Removed queued analysis for UUID={uuid}")
         self.queue = temp_queue
 
     async def handle_segment_update(self, uuid, text, question_idx, segment_idx, all_segments):
-        logging.info(f"🔄 [Analysis] Handling segment update: UUID={uuid}, all_segments count={len(all_segments)}")
+        logging.info(f"🔄 [Analysis] Handling segment update: UUID={uuid}")
+        
+        # Cancel any existing analysis for this UUID
+        await self._cancel_existing_analysis(uuid)
+        
         # Create new analysis request
         request = AnalysisRequest(
             uuid=uuid,
@@ -68,33 +78,9 @@ class AnalysisService:
             "segment_idx": segment_idx
         }
 
-        # Handle different cases based on UUID status
-        if uuid == self.currently_processing:
-            # If this UUID is currently being processed, flag to discard its results
-            logging.info(f"⚠️ [Analysis] UUID={uuid} currently processing, flagging to discard results")
-            self.discard_results.add(uuid)
-            
-            # Clear any existing interventions for this UUID
-            self.active_interventions.pop(uuid, None)
-        else:
-            # Remove any existing requests for this UUID from the queue
-            temp_queue = asyncio.Queue()
-            while not self.queue.empty():
-                queued_request = await self.queue.get()
-                if queued_request.uuid != uuid:
-                    await temp_queue.put(queued_request)
-            
-            # Restore queue without the old request for this UUID
-            while not temp_queue.empty():
-                await self.queue.put(await temp_queue.get())
-                
-            # Clear any existing interventions for this UUID
-            self.active_interventions.pop(uuid, None)
-            logging.info(f"🔄 [Analysis] Removed old requests for UUID={uuid} from queue")
-
         # Queue the new request
         await self.queue.put(request)
-        logging.info(f"📥 [Analysis] Queued new analysis for UUID={uuid}. Queue size: {self.queue.qsize()}")
+        logging.info(f"📥 [Analysis] Queued new analysis. Queue size: {self.queue.qsize()}")
         
         # Start processing if not already running
         if not self.is_processing:
@@ -111,38 +97,37 @@ class AnalysisService:
                 logging.info(f"📝 [Analysis] Processing analysis for UUID: {request.uuid}")
                 
                 try:
-                    # Run parallel analysis for current segment
+                    # Run analysis for current segment
                     analysis_result = await self._analyze_text(request)
                     logging.info(f"✅ [Analysis] Analysis completed for UUID: {request.uuid}")
-                    logging.info(f"📊 [Analysis] Result: {analysis_result}")
                     
-                    # Only handle results if they shouldn't be discarded
-                    if request.uuid not in self.discard_results:
-                        if "error" not in analysis_result:
-                            await self._handle_analysis_result(request)
-                        else:
-                            self.analysis_status[request.uuid] = "error"
-                            await self.ws.send_json({
-                                "type": "analysis_error",
-                                "uuid": request.uuid,
-                                "error": analysis_result["error"]
-                            })
-                    else:
-                        logging.info(f"🚫 [Analysis] Discarding results for UUID: {request.uuid}")
+                    # Check if the analysis result should be discarded due to newer analysis
+                    if request.uuid in self.discard_results:
+                        logging.info(f"🚫 [Analysis] Discarding completed analysis for UUID={request.uuid} as newer analysis exists")
                         self.discard_results.remove(request.uuid)
-                
-                except Exception as e:
-                    logging.error(f"❌ [Analysis] Error during analysis for UUID {request.uuid}: {e}")
-                    if request.uuid not in self.discard_results:
-                        self.analysis_status[request.uuid] = "error"
-                        await self.ws.send_json({
-                            "type": "analysis_error",
-                            "uuid": request.uuid,
-                            "error": str(e)
-                        })
+                    else:
+                        # Filter consistency interventions if newer analysis exists for referenced segment
+                        if "interventions" in analysis_result:
+                            filtered_interventions = []
+                            for intervention in analysis_result["interventions"]:
+                                if intervention['type'] == 'consistency':
+                                    referenced_uuid = intervention['previous_segment']['uuid']
+                                    has_new_analysis = any(
+                                        queued_request.uuid == referenced_uuid 
+                                        for queued_request in self.queue._queue
+                                    )
+                                    if has_new_analysis:
+                                        logging.info(f"🚫 [Analysis] Discarding consistency intervention: referenced segment {referenced_uuid} has newer analysis pending")
+                                        continue
+                                filtered_interventions.append(intervention)
+                            analysis_result["interventions"] = filtered_interventions
+
+                        # Store result and send
+                        self.analysis_results[request.uuid] = analysis_result
+                        await self._handle_analysis_result(request)
                 
                 finally:
-                    self.queue.task_done()
+                    # self.queue.task_done()
                     self.currently_processing = None
 
         finally:
@@ -229,10 +214,15 @@ class AnalysisService:
     async def _handle_analysis_result(self, request: AnalysisRequest):
         logging.info(f"📤 [Analysis] Sending results for UUID={request.uuid}")
         try:
+            # Check if results should still be sent
+            if request.uuid in self.discard_results:
+                logging.info(f"🚫 [Analysis] Skipping sending results for UUID={request.uuid} as newer analysis exists")
+                self.discard_results.remove(request.uuid)
+                return
             self.analysis_status[request.uuid] = "completed"
             
-            # Create result dict from the analysis result
-            analysis_result = await self._analyze_text(request)
+            # Create result dict from the processed queue
+            analysis_result = self.analysis_results.get(request.uuid)
             
             # Safely handle result and extract interventions
             if "error" not in analysis_result:
@@ -249,6 +239,7 @@ class AnalysisService:
                 raise Exception(analysis_result["error"])
 
         except Exception as e:
+            logging.error(f"❌ [Analysis] Error during analysis for UUID {request.uuid}: {e}")
             self.analysis_status[request.uuid] = "error"
             await self.ws.send_json({
                 "type": "analysis_error",

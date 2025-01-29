@@ -116,60 +116,85 @@ export const useSurveyStore = create(
         };
       }),
 
-      updateSegment: (uuid, newText) => set(state => {
-        const segment = state.segments[uuid];
-        if (!segment) return state;
+      // updateSegment: (uuid, newText) => set(state => {
+      //   const segment = state.segments[uuid];
+      //   if (!segment) return state;
       
-        return {
-          segments: {
-            ...state.segments,
-            [uuid]: {
-              ...segment,
-              text: newText
-            }
-          },
-          answers: {
-            ...state.answers,
-            [segment.questionIdx]: {
-              ...state.answers[segment.questionIdx],
-              [segment.segmentIdx]: newText
+      //   return {
+      //     segments: {
+      //       ...state.segments,
+      //       [uuid]: {
+      //         ...segment,
+      //         text: newText
+      //       }
+      //     },
+      //     answers: {
+      //       ...state.answers,
+      //       [segment.questionIdx]: {
+      //         ...state.answers[segment.questionIdx],
+      //         [segment.segmentIdx]: newText
               
+      //       }
+      //     }
+      //   };
+      // }),
+
+      // Reusable function to analyze a segment if needed
+      analyzeSegmentIfNeeded: (uuid, newText = undefined) => {
+        const state = get();
+        const segment = state.segments[uuid];
+        // Accepts optional newText for intervention updates, otherwise uses current segment text for direct editing case
+        const textToAnalyze = newText !== undefined ? newText : segment?.text;
+        const lastAnalyzedText = state.lastAnalyzedTexts[uuid];
+
+        console.log('analyzeSegmentIfNeeded called with:', {
+          uuid,
+          textToAnalyze,
+          lastAnalyzedText
+        });
+
+        if (textToAnalyze?.length >= 10 && 
+            (lastAnalyzedText === undefined || textToAnalyze !== lastAnalyzedText)) {
+          console.log('Analysis needed - conditions met');  
+          // Send segment update to server
+          state.wsService?.sendMessage({
+            type: 'segment_update',
+            uuid: uuid,
+            text: textToAnalyze,
+            questionIdx: segment.questionIdx,
+            segmentIdx: segment.segmentIdx,
+            all_segments: state.segments  // Include all segments for consistency checks
+          });
+
+          return {
+            analysisStatus: {
+              ...state.analysisStatus,
+              [uuid]: 'pending'
+            },
+            lastAnalyzedTexts: {
+              ...state.lastAnalyzedTexts,
+              [uuid]: textToAnalyze
             }
-          }
-        };
-      }),
+          };
+        }
+
+        return null;
+      },
+
       // Edit State Management
       setActiveEditingSegment: (uuid) => set(state => {
         const prevActive = state.activeEditingSegment;
 
         if (prevActive && prevActive !== uuid) {
-          const prevSegment = state.segments[prevActive];
-          const currentText = prevSegment?.text;
-          const lastAnalyzedText = state.lastAnalyzedTexts[prevActive];
-
-          if (currentText?.length >= 10 && 
-              (lastAnalyzedText === undefined || currentText !== lastAnalyzedText)) {
-
-            // Send all segments for consistency checks
-            state.wsService?.sendMessage({
-              type: 'segment_update',
-              uuid: prevActive,
-              text: currentText,
-              questionIdx: prevSegment.questionIdx,
-              segmentIdx: prevSegment.segmentIdx,
-              all_segments: state.segments  // Include all segments
-            });
-
+          const analysisUpdates = state.analyzeSegmentIfNeeded(prevActive);
+          if (analysisUpdates) {
+          // 1. Mark ALL interventions of edited segment as stale
+          state.markAllInterventionsAsStale(prevActive);
+          // 2. Mark only consistency interventions in other segments that reference this segment
+          state.markConsistencyInterventionsAsStale(prevActive);
             return {
               activeEditingSegment: uuid,
-              analysisStatus: {
-                ...state.analysisStatus,
-                [prevActive]: 'pending'
-              },
-              lastAnalyzedTexts: {
-                ...state.lastAnalyzedTexts,
-                [prevActive]: currentText
-              }
+              ...analysisUpdates
             };
           }
         }
@@ -189,58 +214,44 @@ export const useSurveyStore = create(
       addIntervention: (intervention) => set(state => ({
         interventions: [...state.interventions, {
           ...intervention,
-          id: Date.now(),
+          id: uuidv4(),
           response: null,
           responseTime: null
         }]
       })),
 
-      // Intervention Management
       respondToIntervention: (interventionId, response, newText = null, targetUuid = null) => set(state => {
-        //debugging
-        console.log('respondToIntervention called with:', {
-          interventionId,
-          response,
-          newText,
-          targetUuid
-        });
         // Always update intervention status
         const updatedInterventions = state.interventions.map(int =>
           int.id === interventionId
             ? { ...int, response, responseTime: Date.now() }
             : int
         );
-
+      
+        // Find the intervention to get context
+        const intervention = state.interventions.find(i => i.id === interventionId);
+        if (!intervention) {
+          return { interventions: updatedInterventions };
+        }
+      
         // If no text update needed, just return intervention update
         if (!newText) {
           return { interventions: updatedInterventions };
         }
-
-        // Find the intervention to get context
-        const intervention = state.interventions.find(i => i.id === interventionId);
-        //debugging
-        console.log('Found intervention:', intervention);
-        if (!intervention) {
-          return { interventions: updatedInterventions };
-        }
-
+      
         // Determine which UUID to update
         const uuid = targetUuid || intervention.uuid;
         const segment = state.segments[uuid];
-        //debugging
-        console.log('Segment update attempt:', {
-          targetUuid,
-          finalUuid: uuid,
-          segmentFound: !!segment,
-          segment
-        });
-
+      
         if (!segment) {
           return { interventions: updatedInterventions };
         }
+      
+        // First determine which segments we updated
+        const currentUuid = intervention.uuid;
+        const previousUuid = targetUuid; // Will be null for current segment edits
 
-        // Update both segments and answers with new text
-        return {
+        let baseUpdate = {
           interventions: updatedInterventions,
           segments: {
             ...state.segments,
@@ -255,26 +266,73 @@ export const useSurveyStore = create(
               ...state.answers[segment.questionIdx],
               [segment.segmentIdx]: newText
             }
-          },
-          // Clear lastAnalyzedText to ensure it gets analyzed on next segment change
-          lastAnalyzedTexts: {
-            ...state.lastAnalyzedTexts,
-            [uuid]: undefined
           }
         };
+
+        // Check active interventions for relevant segments
+        const currentSegmentActiveInterventions = updatedInterventions.filter(int => 
+          int.uuid === currentUuid && 
+          !int.response && 
+          !int.responseTime
+        );
+
+
+
+
+        // Determine if we should trigger analysis based on our rules
+        if (currentSegmentActiveInterventions.length === 0) {
+          const currentAnalysisUpdates = state.analyzeSegmentIfNeeded(currentUuid, newText);
+          if (currentAnalysisUpdates) {
+            // 1. Mark consistency interventions in other segments stale
+            state.markConsistencyInterventionsAsStale(currentUuid);
+            baseUpdate = {
+              ...baseUpdate,
+              ...currentAnalysisUpdates
+            };
+          }
+        }
+        // // If we're editing a previous segment, also check its active interventions
+        // let previousSegmentActiveInterventions = [];
+        // if (previousUuid) {
+        //   previousSegmentActiveInterventions = updatedInterventions.filter(int => 
+        //     int.uuid === previousUuid && 
+        //     !int.response && 
+        //     !int.responseTime
+        //   );
+        // }
+        // // Additionally check for each previous segment after finish dealing with all current segment interventions
+        // if (previousUuid && previousSegmentActiveInterventions.length === 0) {
+        //   const previousAnalysisUpdates = state.analyzeSegmentIfNeeded(previousUuid, newText);
+        //   if (previousAnalysisUpdates) {
+        //     baseUpdate = {
+        //       ...baseUpdate,
+        //       ...previousAnalysisUpdates
+        //     };
+        //   }
+        // }
+
+        return baseUpdate;
       }),
 
-      addInterventions: (uuid, newInterventions) => 
-        set(state => ({
-          interventions: [
-            ...state.interventions,
-            ...newInterventions.map(int => ({
-              ...int,
-              uuid,
-              response: null
-            }))
-          ]
-        })),
+      // Marking active interventions for direct/cross-reference interventions stale when edits take place
+      // Helper function to mark consistency interventions stale
+      markConsistencyInterventionsAsStale: (targetUuid) => set(state => ({
+        interventions: state.interventions.map(int => {
+          // Only mark consistency interventions that reference the target UUID
+          if (int.type === 'consistency' && 
+            (int.previous_segment?.uuid === targetUuid || int.current_segment?.uuid === targetUuid)) {
+            return { ...int, isStale: true };
+          }
+          return int;
+        })
+      })),
+
+      // Function to mark all interventions of a segment stale
+      markAllInterventionsAsStale: (uuid) => set(state => ({
+        interventions: state.interventions.map(int => 
+          int.uuid === uuid ? { ...int, isStale: true } : int
+        )
+      })),
 
       // Debug Helpers
       setDebugMode: (enabled) => set({ debugMode: enabled }),
