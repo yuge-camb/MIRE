@@ -7,6 +7,7 @@ from services.intervention_service import InterventionService
 from services.llm_manager import LLMManager
 from models.data_models import AnalysisRequest, InterventionResponse
 import logging
+import os
 
 app = FastAPI()
 llm_manager = LLMManager()
@@ -22,7 +23,10 @@ app.add_middleware(
 
 # Initialize services
 llm_manager = LLMManager()
-logger = Logger()
+# Initialize logger with path
+log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+logger = Logger(log_dir)
 intervention_service = InterventionService(logger)
 analysis_service = AnalysisService(llm_manager=llm_manager, websocket_handler=None, intervention_service=intervention_service)
 
@@ -70,7 +74,26 @@ async def websocket_endpoint(websocket: WebSocket):
                     segment_idx=segment_idx,
                     all_segments=session_state["segments"]
                 )
+            elif data["type"] == "intervention_feedback":
+                # Log feedback
+                logger.log({
+                    "type": "intervention_feedback",
+                    "timestamp": data.get("timestamp"),
+                    "interventionId": data.get("interventionId"),
+                    "feedback": data
+                })
+                
+                # Send confirmation
+                await websocket.send_json({
+                    "type": "intervention_feedback_received",
+                    "interventionId": data.get("interventionId")
+                })
 
+            elif data["type"] == "pause_analysis":
+                await analysis_service.pause_analysis()
+            
+            elif data["type"] == "resume_analysis":
+                await analysis_service.resume_analysis()
             # Handle other message types as needed
 
     except WebSocketDisconnect:

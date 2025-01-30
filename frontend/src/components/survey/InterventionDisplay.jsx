@@ -242,8 +242,7 @@ const InterventionDisplay = ({ uuid }) => {
   const { 
     segments,
     interventions, 
-    respondToIntervention
-    // updateSegment
+    respondToIntervention,
   } = useSurveyStore();
 
   const [error, setError] = useState(null);
@@ -266,7 +265,17 @@ const InterventionDisplay = ({ uuid }) => {
       const currentText = segments[uuid]?.text;
       if (!currentText) return;
       
-      const newText = currentText.replace(triggerPhrase, selectedText);
+      let newText;
+      // Try to replace trigger phrase if it exists
+      if (currentText.includes(triggerPhrase)) {
+        newText = currentText.replace(triggerPhrase, selectedText);
+      } else {
+        // If trigger phrase not found (possibly due to previous edits)
+        // just use the selected text as the whole segment
+        newText = selectedText;
+      }
+
+      // const newText = currentText.replace(triggerPhrase, selectedText);
       console.log('Before intervention response:', interventions);
       await respondToIntervention(interventionId, 'applied', newText);
       console.log('After intervention response:', interventions);

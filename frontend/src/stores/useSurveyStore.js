@@ -20,6 +20,7 @@ export const useSurveyStore = create(
       activeEditingSegment: null,
       activeChat: null,  // Add state for active chat
       lastAnalyzedTexts: {}, // tracks {uuid: lastAnalyzedText}
+      interventionFeedback: [],
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -116,29 +117,6 @@ export const useSurveyStore = create(
         };
       }),
 
-      // updateSegment: (uuid, newText) => set(state => {
-      //   const segment = state.segments[uuid];
-      //   if (!segment) return state;
-      
-      //   return {
-      //     segments: {
-      //       ...state.segments,
-      //       [uuid]: {
-      //         ...segment,
-      //         text: newText
-      //       }
-      //     },
-      //     answers: {
-      //       ...state.answers,
-      //       [segment.questionIdx]: {
-      //         ...state.answers[segment.questionIdx],
-      //         [segment.segmentIdx]: newText
-              
-      //       }
-      //     }
-      //   };
-      // }),
-
       // Reusable function to analyze a segment if needed
       analyzeSegmentIfNeeded: (uuid, newText = undefined) => {
         const state = get();
@@ -224,7 +202,7 @@ export const useSurveyStore = create(
         // Always update intervention status
         const updatedInterventions = state.interventions.map(int =>
           int.id === interventionId
-            ? { ...int, response, responseTime: Date.now() }
+            ? { ...int, response, responseTime: Date.now(), feedbackSubmitted: false }
             : int
         );
       
@@ -275,9 +253,6 @@ export const useSurveyStore = create(
           !int.response && 
           !int.responseTime
         );
-
-
-
 
         // Determine if we should trigger analysis based on our rules
         if (currentSegmentActiveInterventions.length === 0) {
@@ -333,6 +308,28 @@ export const useSurveyStore = create(
           int.uuid === uuid ? { ...int, isStale: true } : int
         )
       })),
+
+
+      // Intervention Feedback Management
+      submitInterventionFeedback: (interventionId, feedbackData) => set(state => {
+        const intervention = state.interventions.find(i => i.id === interventionId);
+        if (!intervention) return state;
+      
+        const updatedInterventions = state.interventions.map(int =>
+          int.id === interventionId
+            ? { ...int, feedbackSubmitted: true }
+            : int
+        );
+        state.wsService?.sendInterventionFeedback(feedbackData);
+      
+        return {
+          interventions: updatedInterventions,
+          interventionFeedback: [
+            ...state.interventionFeedback,
+            feedbackData
+          ]
+        };
+      }),
 
       // Debug Helpers
       setDebugMode: (enabled) => set({ debugMode: enabled }),

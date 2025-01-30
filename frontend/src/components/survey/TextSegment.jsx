@@ -26,7 +26,6 @@ const TextSegment = ({ questionId, segmentId }) => {
   const handleTextChange = (e) => {
     const newText = e.target.value;
     setAnswer(questionId, currentSegmentIdx, newText, uuid);
-    // setActiveEditingSegment(uuid); // Moved to onFocus
   };
 
   const handleBlur = () => {

@@ -23,6 +23,7 @@ class AnalysisService:
         self.queue = asyncio.Queue()
         self.is_processing = False  # Flag to track if there is something currently being processed in the queue
         self.currently_processing = None  # Track UUID currently being processed
+        self.is_paused = False # Flag to track if the queue processing is paused
         self.discard_results = set()  # Set to track UUIDs whose results should be discarded
         self.analysis_status = {}
         self.active_interventions = {}
@@ -53,6 +54,20 @@ class AnalysisService:
             else:
                 logging.info(f"🗑️ [Analysis] Removed queued analysis for UUID={uuid}")
         self.queue = temp_queue
+
+    async def pause_analysis(self):
+        """Pause processing of new analyses when a user is filling in the feedback form"""
+        logging.info("⏸️ [Analysis] Pausing analysis queue processing")
+        self.is_paused = True
+
+    async def resume_analysis(self):
+        """Resume processing of analyses when a user is done filling in the feedback form"""
+        logging.info("▶️ [Analysis] Resuming analysis queue processing")
+        self.is_paused = False
+        # If queue has items and nothing is being processed, restart processing
+        if not self.queue.empty() and not self.is_processing:
+            self.is_processing = True
+            asyncio.create_task(self._process_queue())
 
     async def handle_segment_update(self, uuid, text, question_idx, segment_idx, all_segments):
         logging.info(f"🔄 [Analysis] Handling segment update: UUID={uuid}")
@@ -92,6 +107,10 @@ class AnalysisService:
         """Process one analysis request at a time"""
         try:
             while not self.queue.empty():
+                # Check pause state before processing each item
+                if self.is_paused:
+                    return  # Exit processing while paused
+                
                 request = await self.queue.get()
                 self.currently_processing = request.uuid
                 logging.info(f"📝 [Analysis] Processing analysis for UUID: {request.uuid}")

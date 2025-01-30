@@ -1,0 +1,322 @@
+[
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T16:26:53.616Z",
+    "interventionId": "4fb7774e-e1f7-45e4-904a-5fe6e1ae3cc8",
+    "feedback": {
+      "type": "intervention_feedback",
+      "interventionId": "4fb7774e-e1f7-45e4-904a-5fe6e1ae3cc8",
+      "timestamp": "2025-01-30T16:26:53.616Z",
+      "activity": "thinking/pausing",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": ""
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T16:28:17.047Z",
+    "interventionId": "7aba0392-71d7-4e3b-be77-37a73d13350c",
+    "feedback": {
+      "type": "intervention_feedback",
+      "interventionId": "7aba0392-71d7-4e3b-be77-37a73d13350c",
+      "timestamp": "2025-01-30T16:28:17.047Z",
+      "activity": "editing/modifying requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": ""
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:27:38.761Z",
+    "interventionId": "8ae3514a-d97c-455b-9fb8-581018523eb7",
+    "feedback": {
+      "type": "intervention_feedback",
+      "activity": "editing/modifying requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "8ae3514a-d97c-455b-9fb8-581018523eb7",
+      "timestamp": "2025-01-30T20:27:38.761Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:31:17.736Z",
+    "interventionId": "4cda53ef-45fb-4f44-b402-59371e97277e",
+    "feedback": {
+      "type": "intervention_feedback",
+      "activity": "reviewing previous requirements",
+      "timingRating": 2,
+      "focusImpact": 4,
+      "experienceFeedback": "blblbl",
+      "interventionId": "4cda53ef-45fb-4f44-b402-59371e97277e",
+      "timestamp": "2025-01-30T20:31:17.736Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:34:12.720Z",
+    "interventionId": "d52e8e04-230a-4c66-9aa6-67b6fbc41ffb",
+    "feedback": {
+      "type": "intervention_feedback",
+      "activity": "other",
+      "timingRating": 4,
+      "focusImpact": 5,
+      "experienceFeedback": "",
+      "interventionId": "d52e8e04-230a-4c66-9aa6-67b6fbc41ffb",
+      "timestamp": "2025-01-30T20:34:12.720Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:34:44.976Z",
+    "interventionId": "7af0832e-ca0a-4783-936f-e66f9ce7d778",
+    "feedback": {
+      "type": "intervention_feedback",
+      "activity": "thinking/pausing",
+      "timingRating": 2,
+      "focusImpact": 5,
+      "experienceFeedback": "",
+      "interventionId": "7af0832e-ca0a-4783-936f-e66f9ce7d778",
+      "timestamp": "2025-01-30T20:34:44.976Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:34:50.192Z",
+    "interventionId": "5e666d26-6b53-4c9f-97d8-fff33425d9bf",
+    "feedback": {
+      "type": "intervention_feedback",
+      "activity": "thinking/pausing",
+      "timingRating": 3,
+      "focusImpact": 4,
+      "experienceFeedback": "",
+      "interventionId": "5e666d26-6b53-4c9f-97d8-fff33425d9bf",
+      "timestamp": "2025-01-30T20:34:50.192Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:35:05.769Z",
+    "interventionId": "0f90bead-60c7-4e28-af1d-967b825d58f1",
+    "feedback": {
+      "type": "intervention_feedback",
+      "activity": "reviewing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "0f90bead-60c7-4e28-af1d-967b825d58f1",
+      "timestamp": "2025-01-30T20:35:05.769Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:35:14.496Z",
+    "interventionId": "7171b700-c15e-46d6-956b-10cb2189ae11",
+    "feedback": {
+      "type": "intervention_feedback",
+      "activity": "reviewing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "7171b700-c15e-46d6-956b-10cb2189ae11",
+      "timestamp": "2025-01-30T20:35:14.496Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:35:16.536Z",
+    "interventionId": "4a6b157c-f077-4145-b923-b686daea8703",
+    "feedback": {
+      "type": "intervention_feedback",
+      "activity": "reviewing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "4a6b157c-f077-4145-b923-b686daea8703",
+      "timestamp": "2025-01-30T20:35:16.536Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:49:29.336Z",
+    "interventionId": "08aaa3b6-0fdd-4e87-9ef6-f334520832e7",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "typing new requirement",
+      "timingRating": 1,
+      "focusImpact": 1,
+      "experienceFeedback": "",
+      "interventionId": "08aaa3b6-0fdd-4e87-9ef6-f334520832e7",
+      "timestamp": "2025-01-30T20:49:29.336Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:49:42.104Z",
+    "interventionId": "2684b7c7-0c69-4dcc-a91f-b72710752ef9",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "typing new requirement",
+      "timingRating": 1,
+      "focusImpact": 1,
+      "experienceFeedback": "",
+      "interventionId": "2684b7c7-0c69-4dcc-a91f-b72710752ef9",
+      "timestamp": "2025-01-30T20:49:42.104Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:49:49.128Z",
+    "interventionId": "0c8d7d7f-3fcd-4f2f-8cff-f37017692a0e",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "thinking/pausing",
+      "timingRating": 1,
+      "focusImpact": 1,
+      "experienceFeedback": "",
+      "interventionId": "0c8d7d7f-3fcd-4f2f-8cff-f37017692a0e",
+      "timestamp": "2025-01-30T20:49:49.128Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:50:00.816Z",
+    "interventionId": "b0506066-c4d2-4666-8e41-835845a598f6",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "thinking/pausing",
+      "timingRating": 1,
+      "focusImpact": 1,
+      "experienceFeedback": "",
+      "interventionId": "b0506066-c4d2-4666-8e41-835845a598f6",
+      "timestamp": "2025-01-30T20:50:00.816Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:50:07.808Z",
+    "interventionId": "fe2e8642-8657-4c11-b97a-02b5f6fb893e",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "thinking/pausing",
+      "timingRating": 1,
+      "focusImpact": 1,
+      "experienceFeedback": "",
+      "interventionId": "fe2e8642-8657-4c11-b97a-02b5f6fb893e",
+      "timestamp": "2025-01-30T20:50:07.808Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:50:17.640Z",
+    "interventionId": "dd0da992-b873-4b70-adcc-8d836084bfa6",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "thinking/pausing",
+      "timingRating": 1,
+      "focusImpact": 1,
+      "experienceFeedback": "",
+      "interventionId": "dd0da992-b873-4b70-adcc-8d836084bfa6",
+      "timestamp": "2025-01-30T20:50:17.640Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:59:37.192Z",
+    "interventionId": "f3223fe6-2387-4504-a34b-38bc27b2cd25",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "reviewing previous requirements",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "f3223fe6-2387-4504-a34b-38bc27b2cd25",
+      "timestamp": "2025-01-30T20:59:37.192Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T20:59:58.688Z",
+    "interventionId": "283e7e85-3856-41f5-9901-77a679c60161",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "reviewing previous requirements",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "283e7e85-3856-41f5-9901-77a679c60161",
+      "timestamp": "2025-01-30T20:59:58.688Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T21:00:16.376Z",
+    "interventionId": "45fd6ad6-b637-4633-914d-5fe4f4b752b3",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "reviewing previous requirements",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "45fd6ad6-b637-4633-914d-5fe4f4b752b3",
+      "timestamp": "2025-01-30T21:00:16.376Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T21:00:20.479Z",
+    "interventionId": "4ed5c3e7-1527-44eb-b959-2737a8c46074",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "reviewing previous requirements",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "4ed5c3e7-1527-44eb-b959-2737a8c46074",
+      "timestamp": "2025-01-30T21:00:20.479Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T21:00:47.983Z",
+    "interventionId": "afc20476-6c1c-4d90-b3e9-c087461c5d05",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "reviewing previous requirements",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "afc20476-6c1c-4d90-b3e9-c087461c5d05",
+      "timestamp": "2025-01-30T21:00:47.983Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-30T21:00:59.247Z",
+    "interventionId": "2548941d-c499-4de6-a9cc-9554811160ed",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "reviewing previous requirements",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "2548941d-c499-4de6-a9cc-9554811160ed",
+      "timestamp": "2025-01-30T21:00:59.247Z"
+    }
+  }
+]

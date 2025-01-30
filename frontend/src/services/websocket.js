@@ -110,13 +110,8 @@ export class WebSocketService {
           });
           break;
         
-        case 'intervention_status':
-          // Handle intervention status updates
-          break;
-  
-        case 'analysis_cancelled':
-          // Handle cancelled analysis confirmation
-          this.store.setAnalysisStatus(data.uuid, 'cancelled');
+        case 'intervention_feedback_received':
+          console.log('Feedback received confirmation:', data);
           break;
 
         default:
@@ -145,11 +140,6 @@ export class WebSocketService {
         this.store.addIntervention(uuid, intervention);
       });
     }
-  }
-
-  handleInvalidSegment(uuid) {
-    // Clear any pending analysis status
-    this.store.setAnalysisStatus(uuid, null);
   }
 
   processQueue() {
@@ -181,6 +171,7 @@ export class WebSocketService {
     }
   }
 
+
   attemptReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
@@ -189,59 +180,11 @@ export class WebSocketService {
     }
   }
 
-  getStatus() {
-    return this.status;
-  }
-
-  // sendAnalysisRequest(data) {
-  //   // Convert segments to dictionary format
-  //   console.log('🔄 [Frontend] Sending analysis request:', {
-  //       uuid: data.uuid,
-  //       text: data.text,
-  //       questionIdx: data.questionIdx,
-  //       segmentIdx: data.segmentIdx
-  //   });
-  //   const all_segments = {};
-  //   Object.entries(this.store.segments).forEach(([uuid, segment]) => {
-  //       all_segments[uuid] = {
-  //           text: segment.text,
-  //           question_idx: segment.questionIdx,
-  //           segment_idx: segment.segmentIdx
-  //       }
-  //   });
-
-  //   this.sendMessage({
-  //       type: 'segment_update',
-  //       uuid: data.uuid,
-  //       text: data.text,
-  //       question_idx: data.questionIdx,     
-  //       segment_idx: data.segmentIdx,       
-  //       all_segments                        
-  //   });
-  // }
-
   sendChatMessage(questionId, message) {
     this.sendMessage({
       type: 'chat_message',
       questionId,
       message
-    });
-  }
-
-  // sendSegmentUpdate(uuid, data) {
-  //   this.sendMessage({
-  //     type: 'segment_update',
-  //     uuid,
-  //     question_idx: data.questionIdx,     
-  //     segment_idx: data.segmentIdx,       
-  //     text: data.text
-  //   });
-  // }
-
-  sendSegmentDelete(uuid) {
-    this.sendMessage({
-      type: 'segment_delete',
-      uuid
     });
   }
 
@@ -255,17 +198,22 @@ export class WebSocketService {
     });
   }
   
-  cancelAnalysis(uuid) {
+  sendInterventionFeedback(feedbackData) {
     this.sendMessage({
-      type: 'analysis_cancel',
-      uuid
+      type: 'intervention_feedback',
+      ...feedbackData
     });
   }
   
-  clearAnalysisQueue(uuid) {
+  pauseAnalysis() {
     this.sendMessage({
-      type: 'analysis_queue_clear',
-      uuid
+      type: 'pause_analysis'
+    });
+  }
+
+  resumeAnalysis() {
+    this.sendMessage({
+      type: 'resume_analysis'
     });
   }
 
