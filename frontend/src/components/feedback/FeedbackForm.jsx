@@ -75,9 +75,9 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
             <div className="space-y-2">
               {[
                 'Typing new requirement',
-                'Reviewing previous requirements',
-                'Editing/modifying requirements',
-                'Thinking/pausing',
+                'Editing previous requirements',
+                'Dealing with other interventions',
+                'Thinking/Pausing/Reviewing',
                 'Other'
               ].map((option) => (
                 <div key={option}>
