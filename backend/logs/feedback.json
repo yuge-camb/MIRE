@@ -318,5 +318,168 @@
       "interventionId": "2548941d-c499-4de6-a9cc-9554811160ed",
       "timestamp": "2025-01-30T21:00:59.247Z"
     }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": null,
+    "interventionId": null,
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "editing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": ""
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-31T01:22:48.928Z",
+    "interventionId": "83d0d582-7acd-414a-bec7-bba92a06d1e3",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "typing new requirement",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "83d0d582-7acd-414a-bec7-bba92a06d1e3",
+      "timestamp": "2025-01-31T01:22:48.928Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-31T01:49:54.935Z",
+    "interventionId": "6ad502db-ebee-4959-96f2-4d80f7e11a0c",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "editing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "6ad502db-ebee-4959-96f2-4d80f7e11a0c",
+      "timestamp": "2025-01-31T01:49:54.935Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-31T02:01:48.935Z",
+    "interventionId": "7b558920-1a24-4fb1-904e-bd7bedd259c1",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "editing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "7b558920-1a24-4fb1-904e-bd7bedd259c1",
+      "timestamp": "2025-01-31T02:01:48.935Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-31T02:07:07.743Z",
+    "interventionId": "03b45480-e5f5-4976-a7cc-6e445d9a696d",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "typing new requirement",
+      "timingRating": 1,
+      "focusImpact": 4,
+      "experienceFeedback": "",
+      "interventionId": "03b45480-e5f5-4976-a7cc-6e445d9a696d",
+      "timestamp": "2025-01-31T02:07:07.743Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-31T02:10:24.183Z",
+    "interventionId": "4965f537-94cc-471a-b953-ea5be85d5a0e",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "editing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "4965f537-94cc-471a-b953-ea5be85d5a0e",
+      "timestamp": "2025-01-31T02:10:24.183Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-31T02:10:44.791Z",
+    "interventionId": "a7a0c3c9-1e5e-4f9d-868c-6bb83777c3e3",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "editing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "a7a0c3c9-1e5e-4f9d-868c-6bb83777c3e3",
+      "timestamp": "2025-01-31T02:10:44.791Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-01-31T03:05:40.718Z",
+    "interventionId": "ba83fa08-8c8d-432d-a410-2213647de95f",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "editing previous requirements",
+      "timingRating": 2,
+      "focusImpact": 4,
+      "experienceFeedback": "",
+      "interventionId": "ba83fa08-8c8d-432d-a410-2213647de95f",
+      "timestamp": "2025-01-31T03:05:40.718Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-02-01T20:07:16.835Z",
+    "interventionId": "b4d4fa82-9250-4fdd-bb50-9487f0fb0e58",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "thinking/pausing/reviewing",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "b4d4fa82-9250-4fdd-bb50-9487f0fb0e58",
+      "timestamp": "2025-02-01T20:07:16.835Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-02-01T20:09:49.715Z",
+    "interventionId": "5c083d77-1259-4028-a054-bc81b46da6ba",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "editing previous requirements",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "5c083d77-1259-4028-a054-bc81b46da6ba",
+      "timestamp": "2025-02-01T20:09:49.715Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-02-02T20:33:01.629Z",
+    "interventionId": "8a0271a4-29cf-4315-817c-a5dec7deed0b",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "editing previous requirements",
+      "timingRating": 2,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "8a0271a4-29cf-4315-817c-a5dec7deed0b",
+      "timestamp": "2025-02-02T20:33:01.629Z"
+    }
   }
 ]

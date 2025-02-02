@@ -1,0 +1,32 @@
+{
+  "5f0e02ea-98f5-4b25-a97b-0f90549d9743": [
+    {
+      "type": "segment_timing",
+      "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+      "timing_data": {
+        "type": "segment_timing",
+        "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+        "edit_start_time": "2025-02-02T20:32:20.693Z",
+        "edit_end_time": "2025-02-02T20:32:24.100Z",
+        "editDuration": 3407,
+        "questionIdx": 0,
+        "segmentIdx": 0,
+        "text": ""
+      }
+    },
+    {
+      "type": "segment_timing",
+      "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+      "timing_data": {
+        "type": "segment_timing",
+        "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+        "edit_start_time": "2025-02-02T20:32:24.943Z",
+        "edit_end_time": "2025-02-02T20:32:29.641Z",
+        "editDuration": 4698,
+        "questionIdx": 0,
+        "segmentIdx": 0,
+        "text": "there are too few reviews"
+      }
+    }
+  ]
+}

@@ -9,7 +9,9 @@ const TextSegment = ({ questionId, segmentId }) => {
     segments,
     setAnswer,
     setActiveEditingSegment,
-    removeSegment
+    // removeSegment,
+    setSegmentEditStart,
+    updateSegmentTiming
   } = useSurveyStore();
 
   const [uuid] = useState(() => uuidv4());
@@ -31,11 +33,13 @@ const TextSegment = ({ questionId, segmentId }) => {
   const handleBlur = () => {
     // Called when leaving/unfocusing from this segment
     setActiveEditingSegment(null);  
+    updateSegmentTiming(uuid, text);  // End timing when focus ends
   };
 
   const handleFocus = () => {
     // Called when focusing on this segment
     setActiveEditingSegment(uuid);
+    setSegmentEditStart(uuid);  // Start timing when focus begins
   };
 
   const handleDelete = () => {

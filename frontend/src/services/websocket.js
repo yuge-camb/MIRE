@@ -188,13 +188,30 @@ export class WebSocketService {
     });
   }
 
-  sendInterventionResponse(uuid, interventionId, response, newText = null) {
+  sendSegmentTiming(uuid, editStartTime, editEndTime, questionIdx, segmentIdx, text) {
+    // Convert numeric timestamps to ISO strings
+    const startTimeISO = new Date(editStartTime).toISOString();
+    const endTimeISO = new Date(editEndTime).toISOString();
+    this.sendMessage({
+      type: 'segment_timing',
+      uuid,
+      edit_start_time: startTimeISO,
+      edit_end_time: endTimeISO,
+      editDuration: editEndTime - editStartTime,
+      questionIdx,
+      segmentIdx,
+      text
+    });
+  }
+
+  sendInterventionResponse(uuid, interventionId, response, newText = null, timingData = null) {
     this.sendMessage({
       type: 'intervention_response',
       uuid,
       interventionId,
       response,
-      newText
+      newText,
+      ...timingData
     });
   }
   

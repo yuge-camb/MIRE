@@ -1,0 +1,102 @@
+{
+  "5f0e02ea-98f5-4b25-a97b-0f90549d9743": [
+    {
+      "type": "segment_edit",
+      "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+      "data": {
+        "type": "segment_update",
+        "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+        "text": "there are too few reviews",
+        "questionIdx": 0,
+        "segmentIdx": 0,
+        "editCount": 1,
+        "all_segments": {
+          "5f0e02ea-98f5-4b25-a97b-0f90549d9743": {
+            "text": "there are too few reviews",
+            "questionIdx": 0,
+            "segmentIdx": 0
+          },
+          "8c538347-eb14-4c16-9493-265868fa4be2": {
+            "text": "",
+            "questionIdx": 1,
+            "segmentIdx": 0
+          },
+          "5d9a7807-6d43-4dbc-9790-318a5a1863d6": {
+            "text": "",
+            "questionIdx": 2,
+            "segmentIdx": 0
+          },
+          "89b177f6-b802-4e4e-afed-3c882237564e": {
+            "text": "",
+            "questionIdx": 3,
+            "segmentIdx": 0
+          },
+          "2d01cff4-8a7b-42ff-a55f-8ae1718bb3d3": {
+            "text": "",
+            "questionIdx": 4,
+            "segmentIdx": 0
+          },
+          "b358cca0-09b8-4b3a-8f4e-bc8a41b739dd": {
+            "text": "",
+            "questionIdx": 5,
+            "segmentIdx": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "segment_edit",
+      "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+      "data": {
+        "type": "segment_update",
+        "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+        "text": "The system currently contains fewer reviews than expected or desired.",
+        "questionIdx": 0,
+        "segmentIdx": 0,
+        "editCount": 2,
+        "all_segments": {
+          "5f0e02ea-98f5-4b25-a97b-0f90549d9743": {
+            "text": "there are too few reviews",
+            "questionIdx": 0,
+            "segmentIdx": 0
+          },
+          "8c538347-eb14-4c16-9493-265868fa4be2": {
+            "text": "",
+            "questionIdx": 1,
+            "segmentIdx": 0
+          },
+          "5d9a7807-6d43-4dbc-9790-318a5a1863d6": {
+            "text": "",
+            "questionIdx": 2,
+            "segmentIdx": 0
+          },
+          "89b177f6-b802-4e4e-afed-3c882237564e": {
+            "text": "",
+            "questionIdx": 3,
+            "segmentIdx": 0
+          },
+          "2d01cff4-8a7b-42ff-a55f-8ae1718bb3d3": {
+            "text": "",
+            "questionIdx": 4,
+            "segmentIdx": 0
+          },
+          "b358cca0-09b8-4b3a-8f4e-bc8a41b739dd": {
+            "text": "",
+            "questionIdx": 5,
+            "segmentIdx": 0
+          },
+          "04aa1b61-6322-4b4f-9823-5935232b7745": {
+            "text": "",
+            "questionIdx": 0,
+            "segmentIdx": 1
+          },
+          "fa9b6dc7-cbf6-435a-961c-ec683eb440ef": {
+            "text": "",
+            "questionIdx": 0,
+            "segmentIdx": 1
+          }
+        }
+      }
+    }
+  ]
+}

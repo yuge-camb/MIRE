@@ -13,7 +13,7 @@ export const useSurveyStore = create(
       segments: {}, // {uuid: {text, questionIdx, segmentIdx}}
       analysisStatus: {}, // Track sent analyses status
       interventions: [], // [{id, uuid, type, ...interventionData}]
-      segmentTimings: {},
+      segmentTimings: {}, // {uuid: {editStartTime: number}}
       chatHistory: {},
       debugMode: false,
       wsService: undefined,
@@ -21,6 +21,7 @@ export const useSurveyStore = create(
       activeChat: null,  // Add state for active chat
       lastAnalyzedTexts: {}, // tracks {uuid: lastAnalyzedText}
       interventionFeedback: [],
+      segmentEdits: {}, // Track number of analysis-triggering edits per segment
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -79,41 +80,80 @@ export const useSurveyStore = create(
         }));
       },
 
-      removeSegment: (uuid) => set(state => {
-        // Check if segment exists
-        if (!state.segments[uuid]) return state;
+      // removeSegment: (uuid) => set(state => {
+      //   // Check if segment exists
+      //   if (!state.segments[uuid]) return state;
 
-        const { [uuid]: removed, ...remainingSegments } = state.segments;
-        const questionId = removed.questionIdx;
-        const segmentToRemove = removed.segmentIdx;
+      //   const { [uuid]: removed, ...remainingSegments } = state.segments;
+      //   const questionId = removed.questionIdx;
+      //   const segmentToRemove = removed.segmentIdx;
 
-        // Create new answers object excluding removed segment
-        const newAnswers = { ...state.answers };
-        if (questionId !== undefined) {
-          const currentAnswers = state.answers[questionId] || {};
-          delete currentAnswers[segmentToRemove];
+      //   // Create new answers object excluding removed segment
+      //   const newAnswers = { ...state.answers };
+      //   if (questionId !== undefined) {
+      //     const currentAnswers = state.answers[questionId] || {};
+      //     delete currentAnswers[segmentToRemove];
 
-          // Reindex remaining answers
-          const reindexedAnswers = Object.values(currentAnswers)
-            .reduce((acc, text, i) => {
-              acc[i] = text;
-              return acc;
-            }, {});
+      //     // Reindex remaining answers
+      //     const reindexedAnswers = Object.values(currentAnswers)
+      //       .reduce((acc, text, i) => {
+      //         acc[i] = text;
+      //         return acc;
+      //       }, {});
 
-          newAnswers[questionId] = reindexedAnswers;
+      //     newAnswers[questionId] = reindexedAnswers;
+      //   }
+
+      //   // Also remove any analysis status
+      //   const newAnalysisStatus = { ...state.analysisStatus };
+      //   delete newAnalysisStatus[uuid];
+
+      //   const { [uuid]: _, ...remainingAnalyzedTexts } = state.lastAnalyzedTexts;
+
+      //   return {
+      //     segments: remainingSegments,
+      //     answers: newAnswers,
+      //     analysisStatus: newAnalysisStatus,
+      //     lastAnalyzedTexts: remainingAnalyzedTexts
+      //   };
+      // }),
+      
+      // Tracking segment edit start and end times
+      setSegmentEditStart: (uuid) => set(state => ({
+        segmentTimings: {
+          ...state.segmentTimings,
+          [uuid]: {
+            editStartTime: Date.now(),
+            questionIdx: state.segments[uuid]?.questionIdx,
+            segmentIdx: state.segments[uuid]?.segmentIdx
+          }
         }
+      })),
+      
+      updateSegmentTiming: (uuid, text) => set(state => {
+        const timing = state.segmentTimings[uuid];
+        if (!timing?.editStartTime) return state;
+        
+        const editEndTime = Date.now();
+        
+        // Send timing data via WebSocket
+        state.wsService?.sendSegmentTiming(
+          uuid,
+          timing.editStartTime,
+          editEndTime,
+          timing.questionIdx,
+          timing.segmentIdx,
+          text
+        );
 
-        // Also remove any analysis status
-        const newAnalysisStatus = { ...state.analysisStatus };
-        delete newAnalysisStatus[uuid];
-
-        const { [uuid]: _, ...remainingAnalyzedTexts } = state.lastAnalyzedTexts;
-
+        // Clear the timing
         return {
-          segments: remainingSegments,
-          answers: newAnswers,
-          analysisStatus: newAnalysisStatus,
-          lastAnalyzedTexts: remainingAnalyzedTexts
+          segmentTimings: {
+            ...state.segmentTimings,
+            [uuid]: {
+              editStartTime: null
+            }
+          }
         };
       }),
 
@@ -125,15 +165,11 @@ export const useSurveyStore = create(
         const textToAnalyze = newText !== undefined ? newText : segment?.text;
         const lastAnalyzedText = state.lastAnalyzedTexts[uuid];
 
-        console.log('analyzeSegmentIfNeeded called with:', {
-          uuid,
-          textToAnalyze,
-          lastAnalyzedText
-        });
-
         if (textToAnalyze?.length >= 10 && 
             (lastAnalyzedText === undefined || textToAnalyze !== lastAnalyzedText)) {
-          console.log('Analysis needed - conditions met');  
+          // Increment edit count when analysis is triggered
+          const currentEditCount = state.segmentEdits[uuid] || 0;
+          set({ segmentEdits: { ...state.segmentEdits, [uuid]: currentEditCount + 1 } });
           // Send segment update to server
           state.wsService?.sendMessage({
             type: 'segment_update',
@@ -141,6 +177,7 @@ export const useSurveyStore = create(
             text: textToAnalyze,
             questionIdx: segment.questionIdx,
             segmentIdx: segment.segmentIdx,
+            editCount: currentEditCount + 1,
             all_segments: state.segments  // Include all segments for consistency checks
           });
 
@@ -194,7 +231,9 @@ export const useSurveyStore = create(
           ...intervention,
           id: uuidv4(),
           response: null,
-          responseTime: null
+          responseTime: null,
+          appearanceTime: Date.now(),
+
         }]
       })),
 
@@ -211,7 +250,21 @@ export const useSurveyStore = create(
         if (!intervention) {
           return { interventions: updatedInterventions };
         }
-      
+        
+        // Send intervention response with timing data
+        const responseTime = Date.now();
+        state.wsService?.sendInterventionResponse(
+          intervention.uuid,
+          interventionId,
+          response,
+          newText,
+          {
+            appearanceTime: new Date(intervention.appearanceTime).toISOString(),
+            responseTime: new Date(responseTime).toISOString(),
+            responseLatency: responseTime - intervention.appearanceTime
+          }
+        );
+
         // If no text update needed, just return intervention update
         if (!newText) {
           return { interventions: updatedInterventions };
@@ -220,10 +273,10 @@ export const useSurveyStore = create(
         // Determine which UUID to update
         const uuid = targetUuid || intervention.uuid;
         const segment = state.segments[uuid];
-      
-        if (!segment) {
-          return { interventions: updatedInterventions };
-        }
+        // // Dealing with removed segments
+        // if (!segment) {
+        //   return { interventions: updatedInterventions };
+        // }
       
         // First determine which segments we updated
         const currentUuid = intervention.uuid;

@@ -6,6 +6,7 @@ from services.analysis_service import AnalysisService
 from services.intervention_service import InterventionService
 from services.llm_manager import LLMManager
 from models.data_models import AnalysisRequest, InterventionResponse
+from datetime import datetime
 import logging
 import os
 
@@ -74,6 +75,30 @@ async def websocket_endpoint(websocket: WebSocket):
                     segment_idx=segment_idx,
                     all_segments=session_state["segments"]
                 )
+
+                # Log edit event
+                logger.log({
+                    "type": "segment_edit",
+                    "uuid": uuid,
+                    "data": data,
+                 })
+
+            elif data["type"] == "segment_timing":
+                # Log segment timing data
+                logger.log({
+                    "type": "segment_timing",
+                    "uuid": data["uuid"],
+                    "timing_data": data 
+                })
+
+            elif data["type"] == "intervention_response":
+                # Log the response
+                logger.log({
+                    "type": "intervention_response",
+                    "uuid": data["uuid"],
+                    "timing_data": data 
+                })
+            
             elif data["type"] == "intervention_feedback":
                 # Log feedback
                 logger.log({
@@ -83,11 +108,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     "feedback": data
                 })
                 
-                # Send confirmation
-                await websocket.send_json({
-                    "type": "intervention_feedback_received",
-                    "interventionId": data.get("interventionId")
-                })
+                # # Send confirmation
+                # await websocket.send_json({
+                #     "type": "intervention_feedback_received",
+                #     "interventionId": data.get("interventionId")
+                # })
 
             elif data["type"] == "pause_analysis":
                 await analysis_service.pause_analysis()
