@@ -93,6 +93,108 @@
         "responseTime": "2025-02-02T20:32:50.951Z",
         "responseLatency": 15660
       }
+    },
+    {
+      "type": "intervention_response",
+      "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+      "timing_data": {
+        "type": "intervention_response",
+        "uuid": "5f0e02ea-98f5-4b25-a97b-0f90549d9743",
+        "interventionId": "ab241560-1f0e-41dd-9a36-1f6a91bdd6e0",
+        "response": "applied",
+        "newText": "d",
+        "appearanceTime": "2025-02-02T20:32:56.815Z",
+        "responseTime": "2025-02-02T20:47:03.206Z",
+        "responseLatency": 846391
+      }
+    }
+  ],
+  "11d98d32-9758-4102-99e8-136ecab2f763": [
+    {
+      "type": "intervention_response",
+      "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+      "timing_data": {
+        "type": "intervention_response",
+        "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+        "interventionId": "0d5fb724-8285-457b-b5a6-95095b068964",
+        "response": "applied",
+        "newText": "d",
+        "appearanceTime": "2025-02-02T20:47:30.720Z",
+        "responseTime": "2025-02-02T20:47:33.349Z",
+        "responseLatency": 2629
+      }
+    },
+    {
+      "type": "intervention_response",
+      "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+      "timing_data": {
+        "type": "intervention_response",
+        "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+        "interventionId": "badada56-8501-4aee-b834-49d32ae024c7",
+        "response": "applied",
+        "newText": "The system has fewer reviews available for students to view about different modules\n",
+        "appearanceTime": "2025-02-02T20:49:45.908Z",
+        "responseTime": "2025-02-02T20:49:50.517Z",
+        "responseLatency": 4609
+      }
+    },
+    {
+      "type": "intervention_response",
+      "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+      "timing_data": {
+        "type": "intervention_response",
+        "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+        "interventionId": "61141860-cca0-43e7-adea-d8b131835647",
+        "response": "dismissed",
+        "newText": null,
+        "appearanceTime": "2025-02-02T20:49:56.087Z",
+        "responseTime": "2025-02-02T20:50:08.749Z",
+        "responseLatency": 12662
+      }
+    },
+    {
+      "type": "intervention_response",
+      "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+      "timing_data": {
+        "type": "intervention_response",
+        "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+        "interventionId": "d5acebba-4b7b-4d21-9711-091d98643287",
+        "response": "applied",
+        "newText": "The system has not gathered enough reviews from students to provide a comprehensive evaluation of the engineering module.",
+        "appearanceTime": "2025-02-02T20:52:21.629Z",
+        "responseTime": "2025-02-02T20:52:24.205Z",
+        "responseLatency": 2576
+      }
+    },
+    {
+      "type": "intervention_response",
+      "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+      "timing_data": {
+        "type": "intervention_response",
+        "uuid": "11d98d32-9758-4102-99e8-136ecab2f763",
+        "interventionId": "5c6730a6-3810-4b08-a143-83a5a3836462",
+        "response": "dismissed",
+        "newText": null,
+        "appearanceTime": "2025-02-02T20:58:26.795Z",
+        "responseTime": "2025-02-02T20:58:28.949Z",
+        "responseLatency": 2154
+      }
+    }
+  ],
+  "cacd4d3f-7b35-447d-8328-5525f71471b1": [
+    {
+      "type": "intervention_response",
+      "uuid": "cacd4d3f-7b35-447d-8328-5525f71471b1",
+      "timing_data": {
+        "type": "intervention_response",
+        "uuid": "cacd4d3f-7b35-447d-8328-5525f71471b1",
+        "interventionId": "1e5faf79-8c23-498c-bd31-b7546a9ea007",
+        "response": "applied",
+        "newText": "d",
+        "appearanceTime": "2025-02-02T20:56:45.983Z",
+        "responseTime": "2025-02-02T20:56:48.309Z",
+        "responseLatency": 2326
+      }
     }
   ]
 }

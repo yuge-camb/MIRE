@@ -481,5 +481,80 @@
       "interventionId": "8a0271a4-29cf-4315-817c-a5dec7deed0b",
       "timestamp": "2025-02-02T20:33:01.629Z"
     }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-02-02T20:52:03.829Z",
+    "interventionId": "badada56-8501-4aee-b834-49d32ae024c7",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "dealing with other interventions",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "badada56-8501-4aee-b834-49d32ae024c7",
+      "timestamp": "2025-02-02T20:52:03.829Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-02-02T20:52:05.621Z",
+    "interventionId": "61141860-cca0-43e7-adea-d8b131835647",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "dealing with other interventions",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "61141860-cca0-43e7-adea-d8b131835647",
+      "timestamp": "2025-02-02T20:52:05.621Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-02-02T20:52:31.029Z",
+    "interventionId": "d5acebba-4b7b-4d21-9711-091d98643287",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "no",
+      "activity": "editing previous requirements",
+      "timingRating": 4,
+      "focusImpact": 2,
+      "experienceFeedback": "",
+      "interventionId": "d5acebba-4b7b-4d21-9711-091d98643287",
+      "timestamp": "2025-02-02T20:52:31.029Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-02-02T20:57:01.957Z",
+    "interventionId": "1e5faf79-8c23-498c-bd31-b7546a9ea007",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "typing new requirement",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "1e5faf79-8c23-498c-bd31-b7546a9ea007",
+      "timestamp": "2025-02-02T20:57:01.957Z"
+    }
+  },
+  {
+    "type": "intervention_feedback",
+    "timestamp": "2025-02-02T20:58:33.205Z",
+    "interventionId": "5c6730a6-3810-4b08-a143-83a5a3836462",
+    "feedback": {
+      "type": "intervention_feedback",
+      "issueValidation": "yes",
+      "activity": "typing new requirement",
+      "timingRating": 3,
+      "focusImpact": 3,
+      "experienceFeedback": "",
+      "interventionId": "5c6730a6-3810-4b08-a143-83a5a3836462",
+      "timestamp": "2025-02-02T20:58:33.205Z"
+    }
   }
 ]
