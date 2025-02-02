@@ -42,12 +42,12 @@ const QuestionSection = ({ question }) => {
           ➕ Add Segment
         </button>
         
-        <button
+        {/* <button
           onClick={() => setActiveChat(question.id)}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
         >
           Ask AI for Help 💬
-        </button>
+        </button> */}
       </div>
 
       <div className="mt-4 border-t border-gray-200" />
