@@ -42,9 +42,9 @@ const TextSegment = ({ questionId, segmentId }) => {
     setSegmentEditStart(uuid);  // Start timing when focus begins
   };
 
-  const handleDelete = () => {
-    removeSegment(uuid);
-  };
+  // const handleDelete = () => {
+  //   removeSegment(uuid);
+  // };
 
   return (
     <div className="relative">
@@ -59,12 +59,12 @@ const TextSegment = ({ questionId, segmentId }) => {
             placeholder="Enter your response..."
           />
         </div>
-        <button
+        {/* <button
           onClick={handleDelete}
           className="h-8 px-2 text-gray-500 hover:text-red-500"
         >
           🗑️
-        </button>
+        </button> */}
   
         {/* Added to same flex row instead of below */}
         <div className="w-96">

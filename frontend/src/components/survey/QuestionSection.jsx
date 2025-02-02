@@ -6,7 +6,7 @@ const QuestionSection = ({ question }) => {
   const { 
     answers,
     addSegment,
-    removeSegment,
+    // removeSegment,
     setActiveChat
   } = useSurveyStore();
 
@@ -29,7 +29,7 @@ const QuestionSection = ({ question }) => {
             key={segmentId}
             questionId={question.id}
             segmentId={segmentId}
-            onRemove={() => removeSegment(question.id, segmentId)}
+            // onRemove={() => removeSegment(question.id, segmentId)}
           />
         ))}
       </div>
