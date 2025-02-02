@@ -48,6 +48,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 session_state["segments"] = data.get("segments", {})
                 session_state["analysisStatus"] = data.get("analysisStatus", {})
 
+            elif data["type"] == "session_start":
+                session_id = data["sessionId"]
+                logger.create_session_directory(session_id)
+
             elif data["type"] == "segment_update":
                 uuid = data["uuid"]
                 text = data["text"]
@@ -82,7 +86,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     "uuid": uuid,
                     "data": data,
                  })
-
+            
+            elif data["type"] == "pause_analysis":
+                await analysis_service.pause_analysis()
+            
+            elif data["type"] == "resume_analysis":
+                await analysis_service.resume_analysis()
+                
             elif data["type"] == "segment_timing":
                 # Log segment timing data
                 logger.log({
@@ -108,18 +118,20 @@ async def websocket_endpoint(websocket: WebSocket):
                     "feedback": data
                 })
                 
-                # # Send confirmation
-                # await websocket.send_json({
-                #     "type": "intervention_feedback_received",
-                #     "interventionId": data.get("interventionId")
-                # })
-
-            elif data["type"] == "pause_analysis":
-                await analysis_service.pause_analysis()
-            
-            elif data["type"] == "resume_analysis":
-                await analysis_service.resume_analysis()
-            # Handle other message types as needed
+            elif data["type"] == "submit_survey":
+                # Log final survey state
+                logger.log({
+                    "type": "survey_submission",
+                    "timestamp": data.get("timestamp"),
+                    "final_state": data.get("finalState"),
+                    "session_id": data.get("sessionId")
+                })
+                
+                # Send confirmation back to client
+                await websocket.send_json({
+                    "type": "survey_submission_confirmed",
+                    "sessionId": data.get("sessionId")
+                })
 
     except WebSocketDisconnect:
         print("Client disconnected")

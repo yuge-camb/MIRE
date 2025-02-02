@@ -22,6 +22,9 @@ export const useSurveyStore = create(
       lastAnalyzedTexts: {}, // tracks {uuid: lastAnalyzedText}
       interventionFeedback: [],
       segmentEdits: {}, // Track number of analysis-triggering edits per segment
+      sessionId: null,
+      submissionStatus: '',
+      surveyStarted: false,
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -37,6 +40,31 @@ export const useSurveyStore = create(
         }
       },
 
+      // Session Management
+      startSession: (sessionId) => set(state => {
+        state.wsService?.sendSessionStart(sessionId);
+        return { 
+            sessionId
+        };
+      }),
+
+      //Survey management
+      setSubmissionStatus: (status) => {
+        console.log('Setting submission status to:', status); 
+        set({ submissionStatus: status });
+      },
+
+      setSurveyStarted: (started) => set({ surveyStarted: started }),
+
+      resetSurvey: () => set(state => ({
+        sessionId: null,
+        answers: {},
+        segments: {},
+        analysisStatus: {},
+        interventions: [],
+        segmentTimings: {}
+      })),
+      
       // Segment Management
       setAnswer: (questionId, segmentId, text, uuid) => set(state => ({
         segments: {

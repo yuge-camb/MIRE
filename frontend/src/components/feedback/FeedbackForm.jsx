@@ -31,6 +31,7 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
         {/* Header */}
         <div className="sticky top-0 bg-white p-4 border-b rounded-t-lg">
           <h2 className="text-lg font-semibold">Provide Feedback</h2>
+          <p className="text-sm text-gray-600 mt-2">Your feedback is mandatory for every intervention you deal with. They help inform how useful/timely each intervention is. Thank you!</p>
         </div>
 
         {/* Scrollable Content */}

@@ -9,6 +9,7 @@ export class WebSocketService {
     this.status = 'disconnected';
     this.isIntentionalClose = false;
     this.connect();
+    this.sessionId = null;
   }
 
   connect() {
@@ -113,6 +114,20 @@ export class WebSocketService {
         case 'intervention_feedback_received':
           console.log('Feedback received confirmation:', data);
           break;
+      
+        case 'survey_submission_confirmed':
+          console.log('Survey submission confirmed:', data);
+          
+          // Update UI status through store
+          this.store.setSubmissionStatus('Survey data successfully logged! Redirecting to start page...');
+          
+          // Reset after delay
+          setTimeout(() => {
+              this.store.resetSurvey();
+              this.store.setSurveyStarted(false);  
+              this.store.setSubmissionStatus('');  
+          }, 5000);
+          break;
 
         default:
           console.warn('Unknown message type:', data.type);
@@ -188,6 +203,15 @@ export class WebSocketService {
     });
   }
 
+  sendSessionStart(sessionId) {
+    this.sessionId = sessionId;  // Store session ID
+    this.sendMessage({
+        type: 'session_start',
+        sessionId: sessionId,
+        timestamp: new Date().toISOString()
+    });
+}
+
   sendSegmentTiming(uuid, editStartTime, editEndTime, questionIdx, segmentIdx, text) {
     // Convert numeric timestamps to ISO strings
     const startTimeISO = new Date(editStartTime).toISOString();
@@ -222,6 +246,22 @@ export class WebSocketService {
     });
   }
   
+  sendSurveySubmission(answers) {
+    if (!this.sessionId) {
+        console.error('No active session found');
+        return;
+    }
+    
+    this.sendMessage({
+        type: 'submit_survey',
+        sessionId: this.sessionId,
+        finalState: {
+            answers,
+            timestamp: new Date().toISOString()
+        }
+    });
+}
+
   pauseAnalysis() {
     this.sendMessage({
       type: 'pause_analysis'
