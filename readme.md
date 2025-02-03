@@ -46,7 +46,7 @@ The system provides two main types of interventions:
 ## Development Stages
 
 ### Current Stage: Data Collection (data-collection branch)
-- Collecting user feedback on interventions at different probability thresholds (p \approx 0 and p \approx 1)
+- Collecting user feedback on interventions at different probability thresholds ($p \approx 0$ and $p \approx 1$)
 - Gathering labelled data to infer utility function parameters for optimal intervention timing
 
 ### Future Stage: System Evaluation
@@ -91,6 +91,7 @@ uvicorn main:app --reload --port 8000
 # Frontend
 cd frontend
 npm run dev
+# The terminal will display a local URL - open this in your browser to access the application
 ```
 
 The terminal will display a local URL - open this in your browser to access the application.
