@@ -9,6 +9,7 @@ export class WebSocketService {
     this.status = 'disconnected';
     this.isIntentionalClose = false;
     this.connect();
+    this.sessionId = null;
   }
 
   connect() {
@@ -109,6 +110,24 @@ export class WebSocketService {
             ...data.intervention
           });
           break;
+        
+        case 'intervention_feedback_received':
+          console.log('Feedback received confirmation:', data);
+          break;
+      
+        case 'survey_submission_confirmed':
+          console.log('Survey submission confirmed:', data);
+          
+          // Update UI status through store
+          this.store.setSubmissionStatus('Survey data successfully logged! Redirecting to start page...');
+          
+          // Reset after delay
+          setTimeout(() => {
+              this.store.resetSurvey();
+              this.store.setSurveyStarted(false);  
+              this.store.setSubmissionStatus('');  
+          }, 5000);
+          break;
 
         default:
           console.warn('Unknown message type:', data.type);
@@ -138,11 +157,6 @@ export class WebSocketService {
     }
   }
 
-  handleInvalidSegment(uuid) {
-    // Clear any pending analysis status
-    this.store.setAnalysisStatus(uuid, null);
-  }
-
   processQueue() {
     if (this.status !== 'connected') return;
     
@@ -154,7 +168,6 @@ export class WebSocketService {
 
   sendMessage(message) {
     console.log('Sending WebSocket message:', message);
-
     if (this.ws?.readyState !== WebSocket.OPEN) {
       console.log('WebSocket not open, queueing message');
       if (this.status === 'connecting') {
@@ -173,43 +186,13 @@ export class WebSocketService {
     }
   }
 
+
   attemptReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       setTimeout(() => this.connect(), 2000 * this.reconnectAttempts);
     }
-  }
-
-  getStatus() {
-    return this.status;
-  }
-
-  sendAnalysisRequest(data) {
-    // Convert segments to dictionary format
-    console.log('🔄 [Frontend] Sending analysis request:', {
-        uuid: data.uuid,
-        text: data.text,
-        questionIdx: data.questionIdx,
-        segmentIdx: data.segmentIdx
-    });
-    const all_segments = {};
-    Object.entries(this.store.segments).forEach(([uuid, segment]) => {
-        all_segments[uuid] = {
-            text: segment.text,
-            question_idx: segment.questionIdx,
-            segment_idx: segment.segmentIdx
-        }
-    });
-
-    this.sendMessage({
-        type: 'segment_update',
-        uuid: data.uuid,
-        text: data.text,
-        question_idx: data.questionIdx,     
-        segment_idx: data.segmentIdx,       
-        all_segments                        
-    });
   }
 
   sendChatMessage(questionId, message) {
@@ -220,29 +203,74 @@ export class WebSocketService {
     });
   }
 
-  sendSegmentUpdate(uuid, data) {
+  sendSessionStart(sessionId) {
+    this.sessionId = sessionId;  // Store session ID
     this.sendMessage({
-      type: 'segment_update',
+        type: 'session_start',
+        sessionId: sessionId,
+        timestamp: new Date().toISOString()
+    });
+}
+
+  sendSegmentTiming(uuid, editStartTime, editEndTime, questionIdx, segmentIdx, text) {
+    // Convert numeric timestamps to ISO strings
+    const startTimeISO = new Date(editStartTime).toISOString();
+    const endTimeISO = new Date(editEndTime).toISOString();
+    this.sendMessage({
+      type: 'segment_timing',
       uuid,
-      question_idx: data.questionIdx,     
-      segment_idx: data.segmentIdx,       
-      text: data.text
+      edit_start_time: startTimeISO,
+      edit_end_time: endTimeISO,
+      editDuration: editEndTime - editStartTime,
+      questionIdx,
+      segmentIdx,
+      text
     });
   }
 
-  sendSegmentDelete(uuid) {
+  sendInterventionResponse(uuid, interventionId, response, newText = null, timingData = null) {
     this.sendMessage({
-      type: 'segment_delete',
-      uuid
-    });
-  }
-
-  sendInterventionResponse(uuid, interventionId, response) {
-    return this.sendMessage({
       type: 'intervention_response',
       uuid,
       interventionId,
-      response
+      response,
+      newText,
+      ...timingData
+    });
+  }
+  
+  sendInterventionFeedback(feedbackData) {
+    this.sendMessage({
+      type: 'intervention_feedback',
+      ...feedbackData
+    });
+  }
+  
+  sendSurveySubmission(answers) {
+    if (!this.sessionId) {
+        console.error('No active session found');
+        return;
+    }
+    
+    this.sendMessage({
+        type: 'submit_survey',
+        sessionId: this.sessionId,
+        finalState: {
+            answers,
+            timestamp: new Date().toISOString()
+        }
+    });
+}
+
+  pauseAnalysis() {
+    this.sendMessage({
+      type: 'pause_analysis'
+    });
+  }
+
+  resumeAnalysis() {
+    this.sendMessage({
+      type: 'resume_analysis'
     });
   }
 

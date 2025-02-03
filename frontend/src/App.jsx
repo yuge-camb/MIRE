@@ -3,12 +3,13 @@ import { useSurveyStore } from './stores/useSurveyStore';
 import SurveyContainer from './components/survey/SurveyContainer';
 import ChatInterface from './components/chat/ChatInterface';
 import DebugPanel from './components/debug/DebugPanel';
+import FeedbackManager from './components/feedback/FeedbackManager';
 
 function App() {
   const { 
     initializeWebSocket, 
     disconnectWebSocket, 
-    activeChat,
+    // activeChat,
     debugMode
   } = useSurveyStore();
 
@@ -21,9 +22,10 @@ function App() {
     <div className="min-h-screen bg-gray-50 p-8">
       {debugMode && <DebugPanel />}
       <SurveyContainer />
-      {activeChat !== undefined && (
+      {/* {activeChat !== undefined && (
         <ChatInterface questionId={activeChat} />
-      )}
+      )} */}
+      <FeedbackManager />
     </div>
   );
 }

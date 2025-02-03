@@ -1,3 +1,4 @@
 .env
 streamlit_ver/
 presentation_report/
+backend/logs

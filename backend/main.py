@@ -6,7 +6,9 @@ from services.analysis_service import AnalysisService
 from services.intervention_service import InterventionService
 from services.llm_manager import LLMManager
 from models.data_models import AnalysisRequest, InterventionResponse
+from datetime import datetime
 import logging
+import os
 
 app = FastAPI()
 llm_manager = LLMManager()
@@ -22,7 +24,10 @@ app.add_middleware(
 
 # Initialize services
 llm_manager = LLMManager()
-logger = Logger()
+# Initialize logger with path
+log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+logger = Logger(log_dir)
 intervention_service = InterventionService(logger)
 analysis_service = AnalysisService(llm_manager=llm_manager, websocket_handler=None, intervention_service=intervention_service)
 
@@ -42,6 +47,10 @@ async def websocket_endpoint(websocket: WebSocket):
             if data["type"] == "sync_state":
                 session_state["segments"] = data.get("segments", {})
                 session_state["analysisStatus"] = data.get("analysisStatus", {})
+
+            elif data["type"] == "session_start":
+                session_id = data["sessionId"]
+                logger.create_session_directory(session_id)
 
             elif data["type"] == "segment_update":
                 uuid = data["uuid"]
@@ -71,11 +80,58 @@ async def websocket_endpoint(websocket: WebSocket):
                     all_segments=session_state["segments"]
                 )
 
-            elif data["type"] == "cancel_analysis":
-                uuid = data["uuid"]
-                analysis_service.cancel_analysis(uuid)
+                # Log edit event
+                logger.log({
+                    "type": "segment_edit",
+                    "uuid": uuid,
+                    "data": data,
+                 })
+            
+            elif data["type"] == "pause_analysis":
+                await analysis_service.pause_analysis()
+            
+            elif data["type"] == "resume_analysis":
+                await analysis_service.resume_analysis()
+                
+            elif data["type"] == "segment_timing":
+                # Log segment timing data
+                logger.log({
+                    "type": "segment_timing",
+                    "uuid": data["uuid"],
+                    "timing_data": data 
+                })
 
-            # Handle other message types as needed
+            elif data["type"] == "intervention_response":
+                # Log the response
+                logger.log({
+                    "type": "intervention_response",
+                    "uuid": data["uuid"],
+                    "timing_data": data 
+                })
+            
+            elif data["type"] == "intervention_feedback":
+                # Log feedback
+                logger.log({
+                    "type": "intervention_feedback",
+                    "timestamp": data.get("timestamp"),
+                    "interventionId": data.get("interventionId"),
+                    "feedback": data
+                })
+                
+            elif data["type"] == "submit_survey":
+                # Log final survey state
+                logger.log({
+                    "type": "survey_submission",
+                    "timestamp": data.get("timestamp"),
+                    "final_state": data.get("finalState"),
+                    "session_id": data.get("sessionId")
+                })
+                
+                # Send confirmation back to client
+                await websocket.send_json({
+                    "type": "survey_submission_confirmed",
+                    "sessionId": data.get("sessionId")
+                })
 
     except WebSocketDisconnect:
         print("Client disconnected")

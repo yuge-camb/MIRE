@@ -9,7 +9,9 @@ const TextSegment = ({ questionId, segmentId }) => {
     segments,
     setAnswer,
     setActiveEditingSegment,
-    removeSegment
+    // removeSegment,
+    setSegmentEditStart,
+    updateSegmentTiming
   } = useSurveyStore();
 
   const [uuid] = useState(() => uuidv4());
@@ -26,22 +28,23 @@ const TextSegment = ({ questionId, segmentId }) => {
   const handleTextChange = (e) => {
     const newText = e.target.value;
     setAnswer(questionId, currentSegmentIdx, newText, uuid);
-    // setActiveEditingSegment(uuid);
   };
 
   const handleBlur = () => {
     // Called when leaving/unfocusing from this segment
     setActiveEditingSegment(null);  
+    updateSegmentTiming(uuid, text);  // End timing when focus ends
   };
 
   const handleFocus = () => {
     // Called when focusing on this segment
     setActiveEditingSegment(uuid);
+    setSegmentEditStart(uuid);  // Start timing when focus begins
   };
 
-  const handleDelete = () => {
-    removeSegment(uuid);
-  };
+  // const handleDelete = () => {
+  //   removeSegment(uuid);
+  // };
 
   return (
     <div className="relative">
@@ -56,12 +59,12 @@ const TextSegment = ({ questionId, segmentId }) => {
             placeholder="Enter your response..."
           />
         </div>
-        <button
+        {/* <button
           onClick={handleDelete}
           className="h-8 px-2 text-gray-500 hover:text-red-500"
         >
           🗑️
-        </button>
+        </button> */}
   
         {/* Added to same flex row instead of below */}
         <div className="w-96">
