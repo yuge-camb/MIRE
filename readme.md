@@ -46,7 +46,7 @@ The system provides two main types of interventions:
 ## Development Stages
 
 ### Current Stage: Data Collection (data-collection branch)
-- Collecting user feedback on interventions at different probability thresholds ($p \approx 0$ and $p \approx 1$)
+- Forcing interventions at different probability points (p(G|E) ≈ 0 and p(G|E) ≈ 1) to gather utility data for both needed [u(A,G)] and unneeded [u(A,¬G)] cases
 - Gathering labelled data to infer utility function parameters for optimal intervention timing
 
 ### Future Stage: System Evaluation
