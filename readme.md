@@ -30,21 +30,25 @@ The system provides two main types of interventions:
 1. **Understandbility Improvement**: Helps users specify their requirements more clearly when ambiguous phrases are detected
 2. **Consistency Checking**: Identifies potential contradictions between different requirement statements
 
-### Key Features
+## Models and Technical Implementation
 
-- Real-time analysis of requirement text
-- Dynamic interventions for ambiguity and consistency issues
-- Intelligent intervention timing based on utility calculations
-- User feedback collection for intervention effectiveness
-- Comprehensive logging of user interactions and system responses
+### Understandability Detection
+- Implemented using GPT-4
+- Leverages established ambiguity types and definitions through crafted prompt templates
+- Chosen due to lack of public labeled datasets for requirements ambiguity
+
+### Consistency Detection
+- Uses Natural Language Inference (NLI) approach
+- Implements nli-deberta-v3-xsmall model
+- Evaluates logical relationships between statement pairs (contradiction, entailment, neutral)
+- Selected for robust performance on standard NLI benchmarks
 
 ## Development Stages
 
 ### Current Stage: Data Collection (data-collection branch)
-- Collecting user feedback on interventions at different probability thresholds (p \approx 0 and p \approx 1)
-- Gathering labelled data to infer utility function parameters for optimal intervention timing
+- Forcing interventions at extreme probability points (p(G|E) ≈ 0 and p(G|E) ≈ 1) to collect user feedback and contextual data, enabling inference of utility function for optimal intervention
 
-### Future Stage: System Evaluation (main branch)
+### Future Stage: System Evaluation
 - Implementation of fully integrated system
 - Comparative evaluation of MI system versus fixed/no initiative approaches
 - Analysis of requirement quality improvements
@@ -86,6 +90,7 @@ uvicorn main:app --reload --port 8000
 # Frontend
 cd frontend
 npm run dev
+# The terminal will display a local URL - open this in your browser to access the application
 ```
 
 The terminal will display a local URL - open this in your browser to access the application.
@@ -94,22 +99,9 @@ The terminal will display a local URL - open this in your browser to access the 
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Models and Technical Implementation
-
-### Understandability Detection
-- Implemented using GPT-4
-- Leverages established ambiguity types and definitions through crafted prompt templates
-- Chosen due to lack of public labeled datasets for requirements ambiguity
-
-### Consistency Detection
-- Uses Natural Language Inference (NLI) approach
-- Implements nli-deberta-v3-xsmall model
-- Evaluates logical relationships between statement pairs (contradiction, entailment, neutral)
-- Selected for robust performance on standard NLI benchmarks
-
 ## Acknowledgments
 
-- Research supported by [Your Institution]
+- Research supported by University of Cambridge
 - Frontend framework: React with Tailwind CSS
 - Backend: FastAPI and Python
 
