@@ -30,6 +30,19 @@ The system provides two main types of interventions:
 1. **Understandbility Improvement**: Helps users specify their requirements more clearly when ambiguous phrases are detected
 2. **Consistency Checking**: Identifies potential contradictions between different requirement statements
 
+## Models and Technical Implementation
+
+### Understandability Detection
+- Implemented using GPT-4
+- Leverages established ambiguity types and definitions through crafted prompt templates
+- Chosen due to lack of public labeled datasets for requirements ambiguity
+
+### Consistency Detection
+- Uses Natural Language Inference (NLI) approach
+- Implements nli-deberta-v3-xsmall model
+- Evaluates logical relationships between statement pairs (contradiction, entailment, neutral)
+- Selected for robust performance on standard NLI benchmarks
+  
 ### Key Features
 
 - Real-time analysis of requirement text
@@ -94,22 +107,9 @@ The terminal will display a local URL - open this in your browser to access the 
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Models and Technical Implementation
-
-### Understandability Detection
-- Implemented using GPT-4
-- Leverages established ambiguity types and definitions through crafted prompt templates
-- Chosen due to lack of public labeled datasets for requirements ambiguity
-
-### Consistency Detection
-- Uses Natural Language Inference (NLI) approach
-- Implements nli-deberta-v3-xsmall model
-- Evaluates logical relationships between statement pairs (contradiction, entailment, neutral)
-- Selected for robust performance on standard NLI benchmarks
-
 ## Acknowledgments
 
-- Research supported by [Your Institution]
+- Research supported by University of Cambridge
 - Frontend framework: React with Tailwind CSS
 - Backend: FastAPI and Python
 
