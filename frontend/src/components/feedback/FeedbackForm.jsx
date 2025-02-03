@@ -133,7 +133,7 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  How did this intervention affect your focus at that moment?
+                How disruptive was this intervention to your focus?
                 </label>
                 <input
                   type="range"
