@@ -42,14 +42,6 @@ The system provides two main types of interventions:
 - Implements nli-deberta-v3-xsmall model
 - Evaluates logical relationships between statement pairs (contradiction, entailment, neutral)
 - Selected for robust performance on standard NLI benchmarks
-  
-### Key Features
-
-- Real-time analysis of requirement text
-- Dynamic interventions for ambiguity and consistency issues
-- Intelligent intervention timing based on utility calculations
-- User feedback collection for intervention effectiveness
-- Comprehensive logging of user interactions and system responses
 
 ## Development Stages
 
@@ -57,7 +49,7 @@ The system provides two main types of interventions:
 - Collecting user feedback on interventions at different probability thresholds (p \approx 0 and p \approx 1)
 - Gathering labelled data to infer utility function parameters for optimal intervention timing
 
-### Future Stage: System Evaluation (main branch)
+### Future Stage: System Evaluation
 - Implementation of fully integrated system
 - Comparative evaluation of MI system versus fixed/no initiative approaches
 - Analysis of requirement quality improvements
