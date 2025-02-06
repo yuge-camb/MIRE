@@ -23,11 +23,15 @@ class DetectorService:
         
         # Load ambiguity types
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(current_dir, 'ambiguity_types.json')
+        ambiguity_type_path = os.path.join(current_dir, 'ambiguity_types.json')
 
-        with open(file_path, 'r') as f:
+        with open(ambiguity_type_path, 'r') as f:
             self.ambiguity_types = json.load(f)
-            
+        
+        questions_path = os.path.join(current_dir, 'questions_stage1.json')
+        with open(questions_path, 'r') as f:
+            self.questions = json.load(f)['questions']
+
         # Define confidence thresholds 
         self.HIGH_CONFIDENCE = 0.7
         self.MEDIUM_CONFIDENCE = 0.5
@@ -36,16 +40,18 @@ class DetectorService:
         self.detection_prompt = self._build_detection_prompt()
         self.interpretation_prompt = self._build_interpretation_prompt()
 
-    async def detect_ambiguity(self, text: str) -> AmbiguityResult:
+    async def detect_ambiguity(self, text: str, question_idx:int) -> AmbiguityResult:
         """Detect ambiguity using logprobs analysis"""
         try:
             logging.info(f"🔍 Starting ambiguity detection for: {text[:50]}...")
             
+            question_text = self.questions[str(question_idx)]
+            analysis_prompt = f"Question being answered: {question_text}\n\nResponse to analyze: {text}"
             # Submit detection request through LLMManager
             result = await self.llm.submit_request_async(
                 messages=[
                     {"role": "system", "content": self.detection_prompt},
-                    {"role": "user", "content": text}
+                    {"role": "user", "content": analysis_prompt}
                 ],
                 task_type="analysis",
                 model="gpt-4",
@@ -72,10 +78,11 @@ class DetectorService:
 
             if confidence >= self.MEDIUM_CONFIDENCE:
                 # Get interpretations if confidence is high enough
+                
                 interp_result = await self.llm.submit_request_async(
                     messages=[
                         {"role": "system", "content": self.interpretation_prompt},
-                        {"role": "user", "content": text}
+                        {"role": "user", "content": analysis_prompt}
                     ],
                     task_type="analysis",
                     model="gpt-4",
@@ -110,9 +117,14 @@ class DetectorService:
         """Build comprehensive prompt using full ambiguity type definitions"""
         # Previous prompt building code remains the same
         prompt_parts = [
-            """You are an expert requirement analyst analysing raw requirements from a survey for ambiguity in a university engineering module review system context.
-            Here is a comprehensive guide of ambiguity types with examples:
-            """
+        """You are an expert requirement analyst analysing raw responses from a requirement elicitation survey for ambiguity in a university engineering module review system context.
+
+        For each response, you will be given:
+        1. The survey question being answered
+        2. The response text to analyze
+        
+        Here is a comprehensive guide of ambiguity types with examples:
+        """
         ]
         
         for amb_type, details in self.ambiguity_types["ambiguity_types"].items():
@@ -139,10 +151,16 @@ class DetectorService:
                             prompt_parts.append(f"- {interp}")
         
         prompt_parts.append("""
-        When one part of the text fulfills one ambuity type, first check the full context to see if that ambiguity is mitigated, if so, consider it unambiguous.
+        When one part of the text fulfills one ambiguity type:
+        1. First check the complete response text - does another part of the response clarify or explain this potentially ambiguous element?
+        2. Then check the question context - does knowing what was asked resolve any remaining ambiguity?
+        3. Only mark as ambiguous if the meaning remains unclear after considering:
+        - The full response context (how other parts of the response might clarify it)
+        - The question context (what specific information was being asked for)
+
         For the text provided, respond with ONLY 'yes' or 'no' to indicate if the overall case is ambiguous:
-        - "yes" if the text is ambiguous.
-        - "no" if the text is not ambiguous.
+        - "yes" if a part remains ambiguous even after considering both its surrounding response context and the question context
+        - "no" if any apparent ambiguity is resolved by either the surrounding response or the question context
         """)
             
         return "\n".join(prompt_parts)
@@ -151,7 +169,14 @@ class DetectorService:
         """Build interpretation prompt"""
         # Previous interpretation prompt building code remains the same
         prompt_parts = [
-            """You are an expert requirement analyst analysing raw requirements from a survey for ambiguity in a university engineering module review system context.
+            """You are an expert requirement analyst analysing raw responses from a requirement elicitation survey for ambiguity in a university engineering module review system context.
+            
+            You will receive:
+            1. The survey question being answered
+            2. A response that needs interpretation
+            
+            Generate interpretations that specifically address how the ambiguous response could be understood in the context of the original question.
+            
             Based on our ambiguity database, here are examples of how different types of ambiguity can be interpreted:"""
         ]
         
@@ -176,9 +201,10 @@ class DetectorService:
         Following these examples, provide interpretations for the part where you considered most ambiguous.
         Rules:
         1. Generate exactly 3 distinct interpretations
-        2. Make interpretations specific and contextually relevant
+        2. Make interpretations specific and contextually relevant to what was being asked
         3. Follow the style of examples shown above
-        4. Consider the type of ambiguity detected
+        4. Each interpretation should be written as a direct replacement for the trigger phrase, 
+            i.e. when user chooses to apply the interpretation to replace the trigger phrase, the overall answer should still flow naturally
     
         Format your response as a JSON object with exactly this structure:
         {

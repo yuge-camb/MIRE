@@ -4,24 +4,31 @@ import { useSurveyStore} from '../../stores/useSurveyStore';
 import { v4 as uuidv4 } from 'uuid';
 
 const QUESTIONS = [
-  { id: 0, text: "What specific problems do you face with the current module review system?" },
-  { id: 1, text: "What improvements would you like to see in the module review process?" },
-  { id: 2, text: "How do you think the review system could better help future students?" },
-  { id: 3, text: "What specific features would make the review process more effective?" },
-  { id: 4, text: "How could the system better capture feedback about teaching quality?" },
-  { id: 5, text: "What additional information would help in module selection?" }
+  { id: 0, text: "What specific details about a module should the review app collect from reviewers, so students can choose modules more effectively?"},
+  { id: 1, text: "What information about a reviewer would make their feedback more relevant for someone choosing a module?" },
+  { id: 2, text: "What filtering or sorting options should the app offer to help students find modules aligned with their priorities?" },
+  { id: 3, text: "What features in a review app would make it more likely for you to submit reviews for modules you've taken?" },
+  { id: 4, text: "How could the app help professors or departments use student reviews to improve modules?" },
+  { id: 5, text: "What additional features do you wish a module review app would have?" }
 ];
 
 const StartSurveyPage = ({ onStart }) => (
   <div className="max-w-2xl mx-auto text-center py-16">
   <h1 className="text-3xl font-bold mb-6">Improving the Module Review System – Requirement Elicitation Survey</h1>
   <p className="text-gray-600 mb-4 text-left">
-    Welcome! This survey is designed to gather your needs and insights to improve the module review web app 
-    (e.g., Camments) for Cambridge Engineering students. Your answers will help explore how a future software tool 
-    can better support students in selecting modules and providing input that may inform course improvements.
+    Welcome! This survey aims to gather insights about improving the module review web app 
+    (Camments) for Cambridge Engineering students. Your responses will be analysed to develop 
+    requirements to enhance both module selection and course improvement processes.
   </p>
   <p className="text-gray-600 mb-4 text-left">
+    Your goal is to actively provide answers that are both understandable and consistent. Take time to make your responses clear and specific, review them to ensure they can be easily interpreted, and check that they align with your other answers.
+    </p>
+  <p className="text-gray-600 mb-4 text-left">
     As you go through the survey, you may receive clarifications or consistency checks to refine your responses.
+  </p>
+  <p className="text-gray-600 mb-4 text-left">
+    For each question, please provide one clear point per response box. 
+    Use the "Add Another Point" button to break down your complete answer into separate parts.
   </p>
   <p className="text-gray-600 mb-8 text-left">
     Click below to begin.
