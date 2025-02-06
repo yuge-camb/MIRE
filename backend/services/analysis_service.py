@@ -160,7 +160,7 @@ class AnalysisService:
             
             # Create tasks for parallel execution
             detector_task = asyncio.create_task(
-                self.detector.detect_ambiguity(request.text)
+                self.detector.detect_ambiguity(request.text, request.question_idx)
             )
             
             logging.info(f"{request.all_segments.items()}")

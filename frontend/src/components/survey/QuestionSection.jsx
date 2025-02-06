@@ -39,7 +39,7 @@ const QuestionSection = ({ question }) => {
           onClick={() => addSegment(question.id)}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
         >
-          ➕ Add Segment
+          ➕ Add Another Point
         </button>
         
         {/* <button
