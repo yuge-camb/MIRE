@@ -27,16 +27,43 @@ const RadioButton = ({ isSelected }) => (
   </div>
 );
 
-const StaleIndicator = ({ intervention, children }) => (
-  <div className={intervention.isStale ? 'opacity-50' : ''}>
-    {intervention.isStale && (
-      <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded mb-2">
-        ⚠️ Content has changed. Please review and dismiss this intervention.
-      </div>
-    )}
-    {children}
-  </div>
-);
+const StaleIndicator = ({ intervention, children }) => {
+  const { respondToIntervention } = useSurveyStore();
+  
+  React.useEffect(() => {
+    if (intervention.isStale) {
+      const timer = setTimeout(() => {
+        respondToIntervention(intervention.id, 'dismissed');
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [intervention.isStale, intervention.id, respondToIntervention]);
+
+  return (
+    <div className={intervention.isStale ? 'opacity-50' : ''}>
+      {intervention.isStale && (
+        <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded mb-2">
+          ⚠️ Content has changed. This intervention will be automatically dismissed.
+        </div>
+      )}
+      {children}
+    </div>
+  );
+};
+
+const InterventionWrapper = ({ intervention, children }) => {
+  const { trackInterventionInteraction } = useSurveyStore();
+  
+  return (
+    <div 
+      onClick={() => trackInterventionInteraction(intervention.id)}
+      onFocus={() => trackInterventionInteraction(intervention.id)}
+    >
+      {children}
+    </div>
+  );
+};
 
 const AmbiguityChoiceIntervention = ({ intervention, onApply, onDismiss }) => {
   const [selectedOption, setSelectedOption] = useState(null);
@@ -44,46 +71,97 @@ const AmbiguityChoiceIntervention = ({ intervention, onApply, onDismiss }) => {
   const [otherText, setOtherText] = useState('');
 
   return (
-    <StaleIndicator intervention={intervention}>
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
-        <h3 className="text-sm font-medium mb-2">🤔 Choose the Most Accurate Interpretation</h3>
-        <p className="text-sm mb-3">
-          The phrase '<strong>{intervention.trigger_phrase}</strong>' could be interpreted in different ways:
-        </p>
-        <div className="space-y-2">
-          {intervention.suggestions.map((suggestion, idx) => (
+    <InterventionWrapper intervention={intervention}>
+      <StaleIndicator intervention={intervention}>
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
+          <h3 className="text-sm font-medium mb-2">🤔 Choose the Most Accurate Interpretation</h3>
+          <p className="text-sm mb-3">
+            The phrase '<strong>{intervention.trigger_phrase}</strong>' could be interpreted in different ways:
+          </p>
+          <div className="space-y-2">
+            {intervention.suggestions.map((suggestion, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setSelectedOption(idx);
+                  setShowOther(false);
+                }}
+                className="w-full text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
+              >
+                <RadioButton isSelected={selectedOption === idx} />
+                {suggestion}
+              </button>
+            ))}
             <button
-              key={idx}
               onClick={() => {
-                setSelectedOption(idx);
-                setShowOther(false);
+                setShowOther(true);
+                setSelectedOption('other');
               }}
               className="w-full text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
             >
-              <RadioButton isSelected={selectedOption === idx} />
-              {suggestion}
+              <RadioButton isSelected={selectedOption === 'other'} />
+              Other (please specify)
             </button>
-          ))}
-          <button
-            onClick={() => {
-              setShowOther(true);
-              setSelectedOption('other');
+            {showOther && (
+              <textarea
+                className="w-full p-2 text-sm border rounded mt-2"
+                rows={2}
+                value={otherText}
+                onChange={(e) => setOtherText(e.target.value)}
+                placeholder="Specify your interpretation..."
+              />
+            )}
+            <div className="flex gap-2 justify-end mt-3">
+              <button
+                onClick={onDismiss}
+                className="px-3 py-1.5 text-sm hover:bg-yellow-100 rounded transition-colors"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => {
+                  let textToApply;
+                  if (selectedOption === 'other') {
+                    textToApply = otherText;
+                  } else {
+                    textToApply = intervention.suggestions[selectedOption];
+                  }
+                  if (textToApply) onApply(textToApply);
+                }}
+                disabled={intervention.isStale || selectedOption === null || (selectedOption === 'other' && !otherText)}
+                className="px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 rounded transition-colors disabled:opacity-50"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      </StaleIndicator>
+    </InterventionWrapper>
+  );
+};
+
+const AmbiguityClarificationIntervention = ({ intervention, onApply, onDismiss }) => (
+  <InterventionWrapper intervention={intervention}>
+    <StaleIndicator intervention={intervention}>
+      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
+        <h3 className="text-sm font-medium mb-2">💭 Could you clarify?</h3>
+        <div className="space-y-3">
+          <p className="text-sm">
+            Please clarify what you mean by '<strong>{intervention.trigger_phrase}</strong>':
+          </p>
+          <textarea 
+            className="w-full p-2 text-sm border rounded"
+            rows={3}
+            placeholder="Type your clarification here..."
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                onApply(e.target.value);
+              }
             }}
-            className="w-full text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
-          >
-            <RadioButton isSelected={selectedOption === 'other'} />
-            Other (please specify)
-          </button>
-          {showOther && (
-            <textarea
-              className="w-full p-2 text-sm border rounded mt-2"
-              rows={2}
-              value={otherText}
-              onChange={(e) => setOtherText(e.target.value)}
-              placeholder="Specify your interpretation..."
-            />
-          )}
-          <div className="flex gap-2 justify-end mt-3">
+          />
+          <div className="flex gap-2 justify-end">
             <button
               onClick={onDismiss}
               className="px-3 py-1.5 text-sm hover:bg-yellow-100 rounded transition-colors"
@@ -91,16 +169,11 @@ const AmbiguityChoiceIntervention = ({ intervention, onApply, onDismiss }) => {
               Dismiss
             </button>
             <button
-              onClick={() => {
-                let textToApply;
-                if (selectedOption === 'other') {
-                  textToApply = otherText;
-                } else {
-                  textToApply = intervention.suggestions[selectedOption];
-                }
-                if (textToApply) onApply(textToApply);
+              onClick={(e) => {
+                const textarea = e.target.parentElement.parentElement.querySelector('textarea');
+                if (textarea.value) onApply(textarea.value);
               }}
-              disabled={intervention.isStale || selectedOption === null || (selectedOption === 'other' && !otherText)}
+              disabled={intervention.isStale}
               className="px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 rounded transition-colors disabled:opacity-50"
             >
               Apply
@@ -109,49 +182,7 @@ const AmbiguityChoiceIntervention = ({ intervention, onApply, onDismiss }) => {
         </div>
       </div>
     </StaleIndicator>
-  );
-};
-
-const AmbiguityClarificationIntervention = ({ intervention, onApply, onDismiss }) => (
-  <StaleIndicator intervention={intervention}>
-    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
-      <h3 className="text-sm font-medium mb-2">💭 Could you clarify?</h3>
-      <div className="space-y-3">
-        <p className="text-sm">
-          Please clarify what you mean by '<strong>{intervention.trigger_phrase}</strong>':
-        </p>
-        <textarea 
-          className="w-full p-2 text-sm border rounded"
-          rows={3}
-          placeholder="Type your clarification here..."
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              onApply(e.target.value);
-            }
-          }}
-        />
-        <div className="flex gap-2 justify-end">
-          <button
-            onClick={onDismiss}
-            className="px-3 py-1.5 text-sm hover:bg-yellow-100 rounded transition-colors"
-          >
-            Dismiss
-          </button>
-          <button
-            onClick={(e) => {
-              const textarea = e.target.parentElement.parentElement.querySelector('textarea');
-              if (textarea.value) onApply(textarea.value);
-            }}
-            disabled={intervention.isStale}
-            className="px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 rounded transition-colors disabled:opacity-50"
-          >
-            Apply
-          </button>
-        </div>
-      </div>
-    </div>
-  </StaleIndicator>
+  </InterventionWrapper>
 );
 
 const InconsistencyIntervention = ({ intervention, onApply, onDismiss }) => {
@@ -165,76 +196,78 @@ const InconsistencyIntervention = ({ intervention, onApply, onDismiss }) => {
   const prevSegmentIdx = previousSegment?.segmentIdx ?? intervention.previous_segment.segmentIdx;
 
   return (
-    <StaleIndicator intervention={intervention}>
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
-        <h3 className="text-sm font-medium mb-2">⚠️ Possible Inconsistency</h3>
-        <div className="space-y-3 text-sm">
-          <p>This may contradict with a previous statement:</p>
-          <div className="p-2 bg-white/50 rounded">
-            <p className="text-xs text-gray-500">
-              Previous statement (Q{prevQuestionIdx + 1}, Segment {prevSegmentIdx + 1}):
-            </p>
-            <p className="mt-1">"{intervention.previous_segment.text}"</p>
-          </div>
-          
-          {!showEdit ? (
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setEditingType('previous');
-                  setShowEdit(true);
-                }}
-                disabled={intervention.isStale}  // Disable both edit buttons when stale
-                className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors disabled:opacity-50"
-              >
-                Edit Previous
-              </button>
-              <button
-                onClick={() => {
-                  setEditingType('current');
-                  setShowEdit(true);
-                }}
-                disabled={intervention.isStale}  // Disable both edit buttons when stale
-                className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors disabled:opacity-50"
-              >
-                Edit Current
-              </button>
-              <button onClick={onDismiss} className="px-3 py-1.5 hover:bg-red-100 rounded text-sm transition-colors">
-                Dismiss
-              </button>
+    <InterventionWrapper intervention={intervention}>
+      <StaleIndicator intervention={intervention}>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+          <h3 className="text-sm font-medium mb-2">⚠️ Possible Inconsistency</h3>
+          <div className="space-y-3 text-sm">
+            <p>This may contradict with a previous statement:</p>
+            <div className="p-2 bg-white/50 rounded">
+              <p className="text-xs text-gray-500">
+                Previous statement (Q{prevQuestionIdx + 1}, Segment {prevSegmentIdx + 1}):
+              </p>
+              <p className="mt-1">"{intervention.previous_segment.text}"</p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              <textarea
-                className="w-full p-2 text-sm border rounded"
-                rows={3}
-                value={editingText}
-                onChange={(e) => setEditingText(e.target.value)}
-                placeholder={`Type your revised ${editingType === 'current' ? 'current' : 'previous'} statement...`}
-              />
-              <div className="flex gap-2 justify-end">
+            
+            {!showEdit ? (
+              <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    setShowEdit(false);
-                    setEditingText('');
+                    setEditingType('previous');
+                    setShowEdit(true);
                   }}
-                  className="px-3 py-1.5 text-sm hover:bg-red-100 rounded transition-colors"
+                  disabled={intervention.isStale}  // Disable both edit buttons when stale
+                  className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors disabled:opacity-50"
                 >
-                  Cancel
+                  Edit Previous
                 </button>
                 <button
-                  onClick={() => onApply(editingType === 'current' ? 'editCurrent' : 'editPrevious', editingText)}
-                  disabled={intervention.isStale || !editingText.trim()}
-                  className="px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 rounded transition-colors disabled:opacity-50"
+                  onClick={() => {
+                    setEditingType('current');
+                    setShowEdit(true);
+                  }}
+                  disabled={intervention.isStale}  // Disable both edit buttons when stale
+                  className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors disabled:opacity-50"
                 >
-                  Apply
+                  Edit Current
+                </button>
+                <button onClick={onDismiss} className="px-3 py-1.5 hover:bg-red-100 rounded text-sm transition-colors">
+                  Dismiss
                 </button>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-2">
+                <textarea
+                  className="w-full p-2 text-sm border rounded"
+                  rows={3}
+                  value={editingText}
+                  onChange={(e) => setEditingText(e.target.value)}
+                  placeholder={`Type your revised ${editingType === 'current' ? 'current' : 'previous'} statement...`}
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => {
+                      setShowEdit(false);
+                      setEditingText('');
+                    }}
+                    className="px-3 py-1.5 text-sm hover:bg-red-100 rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => onApply(editingType === 'current' ? 'editCurrent' : 'editPrevious', editingText)}
+                    disabled={intervention.isStale || !editingText.trim()}
+                    className="px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 rounded transition-colors disabled:opacity-50"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </StaleIndicator>
+      </StaleIndicator>
+    </InterventionWrapper>
   );
 };
 
@@ -258,7 +291,7 @@ const InterventionDisplay = ({ uuid }) => {
 
   console.log('🎯 [Display] Rendering interventions for UUID:', uuid, 
     'Count:', activeInterventions.length);
-    
+
   // Handle ambiguity cases (both multiple choice and clarification)
   const handleAmbiguityApply = async (interventionId, selectedText, triggerPhrase) => {
     try {

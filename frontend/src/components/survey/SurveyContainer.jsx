@@ -4,7 +4,7 @@ import { useSurveyStore} from '../../stores/useSurveyStore';
 import { v4 as uuidv4 } from 'uuid';
 
 const QUESTIONS = [
-  { id: 0, text: "What specific details about a module should the review app collect from reviewers, so students can choose modules more effectively?"},
+  { id: 0, text: "If you were using an app to look up module reviews, what information would you want to see?"},
   { id: 1, text: "What information about a reviewer would make their feedback more relevant for someone choosing a module?" },
   { id: 2, text: "What filtering or sorting options should the app offer to help students find modules aligned with their priorities?" },
   { id: 3, text: "What features in a review app would make it more likely for you to submit reviews for modules you've taken?" },

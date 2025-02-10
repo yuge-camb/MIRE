@@ -3,22 +3,24 @@ from dataclasses import dataclass
 from typing import Dict, Optional, Set
 import time
 import asyncio
+import uuid
 from models.data_models import AnalysisRequest  
 from services.understandability_service import DetectorService
 from services.consistency_service import ConsistencyService
 import logging
+import os
 
 class AnalysisService:
     def __init__(self, 
                  llm_manager,  
                  websocket_handler,
-                 intervention_service):
+                 intervention_service, 
+                 logger):
         # Initialize sub-services
         self.detector = DetectorService(llm_manager)
         self.consistency = ConsistencyService()  
         self.ws = websocket_handler
-        self.intervention_service = intervention_service
-        
+        self.logger = logger
         # Use single asyncio.Queue for analysis requests
         self.queue = asyncio.Queue()
         self.is_processing = False  # Flag to track if there is something currently being processed in the queue
@@ -70,7 +72,7 @@ class AnalysisService:
             asyncio.create_task(self._process_queue())
 
     async def handle_segment_update(self, uuid, text, question_idx, segment_idx, all_segments):
-        logging.info(f"🔄 [Analysis] Handling segment update: UUID={uuid}")
+        logging.info(f"📤[Analysis] Handling segment update: UUID={uuid}")
         
         # Cancel any existing analysis for this UUID
         await self._cancel_existing_analysis(uuid)
@@ -113,12 +115,11 @@ class AnalysisService:
                 
                 request = await self.queue.get()
                 self.currently_processing = request.uuid
-                logging.info(f"📝 [Analysis] Processing analysis for UUID: {request.uuid}")
+                logging.info(f"📤 [Analysis] Processing analysis for UUID: {request.uuid}")
                 
                 try:
                     # Run analysis for current segment
                     analysis_result = await self._analyze_text(request)
-                    logging.info(f"✅ [Analysis] Analysis completed for UUID: {request.uuid}")
                     
                     # Check if the analysis result should be discarded due to newer analysis
                     if request.uuid in self.discard_results:
@@ -156,7 +157,7 @@ class AnalysisService:
     async def _analyze_text(self, request: AnalysisRequest):
         """Run parallel ambiguity and consistency analysis for a single segment"""
         try:
-            logging.info(f"🔍 [Analysis] Starting parallel analysis for UUID={request.uuid}")
+            logging.info(f"📤 [Analysis] Starting parallel analysis for UUID={request.uuid}")
             
             # Create tasks for parallel execution
             detector_task = asyncio.create_task(
@@ -175,8 +176,8 @@ class AnalysisService:
                 for uuid, segment in request.all_segments.items()
                 if uuid != request.uuid and segment['text'].strip()  # Only include non-empty texts
             ]
-            logging.info(f"📊 [Analysis] Processing previous segments - Total segments: {len(request.all_segments)}, Current UUID: {request.uuid}")
-            logging.info(f"🔍 [Analysis] Found {len(previous_segments)} previous segments for analysis")
+            logging.info(f"📤 [Analysis] Processing previous segments - Total segments: {len(request.all_segments)}, Current UUID: {request.uuid}")
+            logging.info(f"📤 [Analysis] Found {len(previous_segments)} previous segments for analysis")
             
             consistency_task = asyncio.create_task(
                 self.consistency.check_consistency( 
@@ -197,32 +198,59 @@ class AnalysisService:
             )
 
             logging.info(f"✅ [Analysis] Completed parallel analysis for UUID={request.uuid}")
-            logging.info(f"🎯 [Detector] Ambiguity detected: {ambiguity_result.detected}")
-            logging.info(f"🔄 [Consistency] Issues found: {len(consistency_result.contradictions) if consistency_result.detected else 0}")
+            logging.info(f"🎯 [Understandability] Ambiguity interventions triggered: {ambiguity_result.intervention_triggered}")
+            logging.info(f"🔄 [Consistency] Issues found: {len(consistency_result.contradictions) if consistency_result.intervention_triggered else 0}")
 
             # Combine results
             interventions = []
 
-            # Add ambiguity intervention if detected
-            if ambiguity_result.detected:
+            # Add ambiguity intervention if triggered
+            if ambiguity_result.intervention_triggered:
+                intervention_id = str(uuid.uuid4()) # Generate unique ID for intervention to be used in frontend display
                 interventions.append({
+                    "id": intervention_id,
                     "type": f"ambiguity_{ambiguity_result.intervention_type}", 
                     "trigger_phrase": ambiguity_result.trigger_phrase,
-                    "confidence": ambiguity_result.confidence,
                     "suggestions": ambiguity_result.suggestions,
                     "segment_uuid": request.uuid
                 })
 
-            # Add consistency interventions if detected
-            if consistency_result.detected:
+                # Log analysis result when an intervention is sent to the frontend
+                self.logger.log({
+                    "type": "ambiguity_analysis",
+                    "intervention_id": intervention_id,
+                    "data": {  # Put all analysis details in data field like other logs
+                        "is_ambiguous": ambiguity_result.is_ambiguous,
+                        "confidence": ambiguity_result.confidence,
+                        "trigger_phrase": ambiguity_result.trigger_phrase,
+                        "suggested_interpretations": ambiguity_result.suggestions,
+                        "intervention_type": ambiguity_result.intervention_type,
+                        "uuid": request.uuid
+                    }
+                })
+
+            # Add consistency interventions if triggered
+            if consistency_result.intervention_triggered:
                 for contradiction in consistency_result.contradictions:
+                    intervention_id = str(uuid.uuid4()) # Generate unique ID for intervention to be used in frontend display
                     interventions.append({
+                        "id": intervention_id,
                         "type": "consistency",
-                        "confidence": contradiction['contradiction_score'],
                         "previous_segment": contradiction['previous_segment'],
                         "current_segment": contradiction['current_segment'],
                         "segment_uuid": request.uuid
                     })
+
+                # Log analysis result when an intervention is sent to the frontend
+                self.logger.log({
+                    "type": "consistency_analysis",
+                    "intervention_id": intervention_id,
+                    "data": {  # Put all analysis details in data field like other logs
+                        "contradiction_score": contradiction['contradiction_score'],
+                        "previous_segment": contradiction['previous_segment'],
+                        "current_segment": contradiction['current_segment']
+                    }
+                })
 
             return {"interventions": interventions if interventions else []}
 
