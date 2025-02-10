@@ -257,13 +257,40 @@ export const useSurveyStore = create(
       addIntervention: (intervention) => set(state => ({
         interventions: [...state.interventions, {
           ...intervention,
-          id: uuidv4(),
           response: null,
           responseTime: null,
           appearanceTime: Date.now(),
+          firstInteractionTime: null, 
 
         }]
       })),
+
+      trackInterventionInteraction: (interventionId) => set(state => ({
+        interventions: state.interventions.map(int =>
+          int.id === interventionId && !int.firstInteractionTime
+            ? { ...int, firstInteractionTime: Date.now() }
+            : int
+        )
+      })),
+
+      // Count active interventions - excluding stale ones
+      getActiveInterventions: (targetUuid = null) => {
+        const state = get();
+        // Filter active interventions - exclude stale ones
+        const activeInterventions = state.interventions.filter(int => 
+          int && 
+          !int.response && 
+          !int.responseTime &&
+          !int.isStale
+        );
+    
+        return {
+          total: activeInterventions.length,
+          forSegment: targetUuid ? 
+            activeInterventions.filter(int => int.uuid === targetUuid).length : 
+            0
+        };
+      },
 
       respondToIntervention: (interventionId, response, newText = null, targetUuid = null) => set(state => {
         // Always update intervention status
@@ -272,15 +299,17 @@ export const useSurveyStore = create(
             ? { ...int, response, responseTime: Date.now(), feedbackSubmitted: false }
             : int
         );
-      
+        
         // Find the intervention to get context
         const intervention = state.interventions.find(i => i.id === interventionId);
         if (!intervention) {
           return { interventions: updatedInterventions };
         }
-        
+
         // Send intervention response with timing data
         const responseTime = Date.now();
+        // Send intervention response with number of active interventions at the time of response
+        const activeCount = state.getActiveInterventions(intervention.uuid);
         state.wsService?.sendInterventionResponse(
           intervention.uuid,
           interventionId,
@@ -288,8 +317,11 @@ export const useSurveyStore = create(
           newText,
           {
             appearanceTime: new Date(intervention.appearanceTime).toISOString(),
+            firstInteractionTime: new Date(intervention.firstInteractionTime).toISOString(),
             responseTime: new Date(responseTime).toISOString(),
-            responseLatency: responseTime - intervention.appearanceTime
+            interactionLatency: intervention.firstInteractionTime - intervention.appearanceTime,
+            responseLatency: responseTime - intervention.appearanceTime,
+            activeInterventionsAtResponse: activeCount
           }
         );
 

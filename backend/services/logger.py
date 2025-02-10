@@ -1,3 +1,4 @@
+import shutil
 import logging
 import json
 import os
@@ -29,15 +30,18 @@ class Logger:
             filename = f"{data['type']}s.json"  
             filepath = os.path.join(self.log_dir, filename)
             self._log_to_file_by_uuid(filepath, data)
-        elif data["type"] == "intervention_feedback":
-            feedback_file = os.path.join(self.log_dir, "feedback.json")
-            self._log_to_file(feedback_file, data)
+        elif data["type"] in["intervention_feedback" , "ambiguity_analysis", "consistency_analysis"] :
+            filename = f"{data['type']}.json"  
+            filepath = os.path.join(self.log_dir, filename)
+            self._log_to_file(filepath, data)
         elif data["type"] == "survey_submission":
             # Create a new file for final survey state
             submission_file = os.path.join(self.log_dir, "survey_submission.json")
             self._log_to_file(submission_file, data)
+            # Create zip file of all logs
+            shutil.make_archive(self.log_dir, 'zip', self.log_dir)
             # Log completion in main log
-            self.logger.info(f"Survey completed and submitted: {data.get('timestamp')}")
+            self.logger.info(f"Survey completed and stored: {data.get('timestamp')}")
 
     def _log_to_file_by_uuid(self, filepath: str, data: dict):
         try:

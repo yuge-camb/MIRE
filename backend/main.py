@@ -29,7 +29,7 @@ log_dir = os.path.join(os.path.dirname(__file__), 'logs')
 os.makedirs(log_dir, exist_ok=True)
 logger = Logger(log_dir)
 intervention_service = InterventionService(logger)
-analysis_service = AnalysisService(llm_manager=llm_manager, websocket_handler=None, intervention_service=intervention_service)
+analysis_service = AnalysisService(llm_manager=llm_manager, websocket_handler=None, intervention_service=intervention_service, logger = logger)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -58,8 +58,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 question_idx = data["questionIdx"]
                 segment_idx = data["segmentIdx"]
                 all_segments = data.get("all_segments", {})
-                logging.info(f"🔄 [WebSocket] Triggering analysis for UUID={data['uuid']}")
-                logging.info(f"📎 [WebSocket] Analysis parameters: "
+                logging.info(f"🔄 [WebSocket] Triggering analysis for UUID={data['uuid']}"
                             f"uuid={uuid}, text={text[:50]}..., "
                             f"questionIdx={question_idx}, "
                             f"segmentIdx={segment_idx}")
@@ -86,7 +85,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "uuid": uuid,
                     "data": data,
                  })
-            
+
             elif data["type"] == "pause_analysis":
                 await analysis_service.pause_analysis()
             

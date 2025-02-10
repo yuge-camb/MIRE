@@ -9,7 +9,15 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
   const [focusImpact, setFocusImpact] = useState(3);
   const [experienceFeedback, setExperienceFeedback] = useState('');
 
-  if (!isOpen) return null;
+  const resetForm = () => {
+    setIssueValidation('');
+    setPartialExplanation('');
+    setActivity('');
+    setOtherActivity('');
+    setTimingRating(3);
+    setFocusImpact(3);
+    setExperienceFeedback('');
+  };
 
   const handleSubmit = () => {
     onSubmit({
@@ -22,20 +30,22 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
       interventionId: intervention.id,
       timestamp: new Date().toISOString()
     });
+    resetForm();
     onClose();
   };
 
+  if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-lg mt-12 mb-4">
         {/* Header */}
-        <div className="sticky top-0 bg-white p-4 border-b rounded-t-lg">
+        <div className="sticky top-0 bg-white p-2 border-b rounded-t-lg">
           <h2 className="text-lg font-semibold">Provide Feedback</h2>
           <p className="text-sm text-gray-600 mt-2">Your feedback is mandatory for every intervention you deal with. They help inform how useful/timely each intervention is. Thank you!</p>
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-4 max-h-[80vh] overflow-y-auto">
+        <div className="p-5 max-h-[70vh] overflow-y-auto">
           <div className="space-y-6">
             {/* Issue Validation */}
             <div>
