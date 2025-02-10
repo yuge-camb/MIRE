@@ -2,6 +2,7 @@ import React from 'react';
 import QuestionSection from './QuestionSection';
 import { useSurveyStore} from '../../stores/useSurveyStore';
 import { v4 as uuidv4 } from 'uuid';
+import  ActivityTracker from './ActivityTracker';
 
 const QUESTIONS = [
   { id: 0, text: "If you were using an app to look up module reviews, what information would you want to see?"},
@@ -70,7 +71,8 @@ const SurveyContainer = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8" id="survey-container">
+      <ActivityTracker />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Module Review System</h1>
         <button

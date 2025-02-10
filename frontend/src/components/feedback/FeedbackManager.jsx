@@ -3,7 +3,7 @@ import { useSurveyStore } from '../../stores/useSurveyStore';
 import FeedbackForm from './FeedbackForm';
 
 const FeedbackManager = () => {
-  const { interventions, submitInterventionFeedback, wsService} = useSurveyStore();
+  const { interventions, submitInterventionFeedback, wsService, pauseActivityTracking, resumeActivityTracking } = useSurveyStore();
   const [showFeedback, setShowFeedback] = useState(false);
   const [currentIntervention, setCurrentIntervention] = useState(null);
 
@@ -17,6 +17,7 @@ const FeedbackManager = () => {
     if (lastResponded) {
       // Pause analysis when feedback form opens
       wsService?.pauseAnalysis();
+      pauseActivityTracking();
       setCurrentIntervention(lastResponded);
       setShowFeedback(true);
     }
@@ -30,6 +31,7 @@ const FeedbackManager = () => {
         setCurrentIntervention(null);
         // Resume analysis when feedback form closes
         wsService?.resumeAnalysis();
+        resumeActivityTracking();
       }}
       onSubmit={(feedbackData) => {
         submitInterventionFeedback(currentIntervention.id, feedbackData);

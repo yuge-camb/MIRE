@@ -86,7 +86,7 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
             {/* Activity Selection */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                What were you doing when interrupted?
+                What were you doing right before you dealt with the intervention?
               </label>
               <div className="space-y-2">
                 {[

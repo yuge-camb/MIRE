@@ -297,8 +297,8 @@ const InterventionDisplay = ({ uuid }) => {
 
   if (!activeInterventions.length) return null;
 
-  console.log('🎯 [Display] Rendering interventions for UUID:', uuid, 
-    'Count:', activeInterventions.length);
+  // console.log('🎯 [Display] Rendering interventions for UUID:', uuid, 
+  //   'Count:', activeInterventions.length);
 
   // Handle ambiguity cases (both multiple choice and clarification)
   const handleAmbiguityApply = async (interventionId, selectedText, triggerPhrase) => {
@@ -317,9 +317,7 @@ const InterventionDisplay = ({ uuid }) => {
       }
 
       // const newText = currentText.replace(triggerPhrase, selectedText);
-      console.log('Before intervention response:', interventions);
       await respondToIntervention(interventionId, 'applied', newText);
-      console.log('After intervention response:', interventions);
     } catch (err) {
       setError('Failed to apply ambiguity intervention.');
     }
@@ -330,16 +328,8 @@ const InterventionDisplay = ({ uuid }) => {
     try {
       if (action === 'editCurrent') {
         // Update the current segment text
-        console.log('Before intervention response:', interventions);
         await respondToIntervention(interventionId, 'applied', newText);
-        console.log('After intervention response:', interventions);
       } else if (action === 'editPrevious') {
-        //Debugging
-        console.log('Editing Previous - before respondToIntervention:', {
-          interventionId,
-          prevUuid,
-          newText
-        });
         // Update the previous segment text
         await respondToIntervention(interventionId, 'applied', newText, prevUuid);
       }
