@@ -80,17 +80,25 @@ const AmbiguityChoiceIntervention = ({ intervention, onApply, onDismiss }) => {
           </p>
           <div className="space-y-2">
             {intervention.suggestions.map((suggestion, idx) => (
+              <div key={idx} className="flex items-center gap-2">
               <button
-                key={idx}
                 onClick={() => {
                   setSelectedOption(idx);
                   setShowOther(false);
                 }}
-                className="w-full text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
+                className="flex-1 text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
               >
                 <RadioButton isSelected={selectedOption === idx} />
                 {suggestion}
               </button>
+              <button
+                onClick={() => navigator.clipboard.writeText(suggestion)}
+                className="px-2 py-1 text-xs text-gray-500 hover:bg-yellow-100 rounded"
+                title="Copy text"
+              >
+                📋
+              </button>
+            </div>
             ))}
             <button
               onClick={() => {
