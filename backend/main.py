@@ -108,6 +108,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     "timing_data": data 
                 })
             
+            elif data["type"] == "activity_timeline":
+                # Log activity timeline
+                logger.log({
+                    "type": "activity_timeline",
+                    "interventionId": data.get("interventionId"),
+                    "activity_data": data.get("data")
+                })
+            
             elif data["type"] == "intervention_feedback":
                 # Log feedback
                 logger.log({

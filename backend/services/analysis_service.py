@@ -245,7 +245,7 @@ class AnalysisService:
                 self.logger.log({
                     "type": "consistency_analysis",
                     "intervention_id": intervention_id,
-                    "data": {  # Put all analysis details in data field like other logs
+                    "data": { 
                         "contradiction_score": contradiction['contradiction_score'],
                         "previous_segment": contradiction['previous_segment'],
                         "current_segment": contradiction['current_segment']

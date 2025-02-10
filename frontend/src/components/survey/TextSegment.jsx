@@ -54,7 +54,8 @@ const TextSegment = ({ questionId, segmentId }) => {
             value={text}
             onChange={handleTextChange}
             onBlur={handleBlur}    
-            onFocus={handleFocus}  
+            onFocus={handleFocus} 
+            data-segment-id={uuid} 
             className="w-full p-3 border rounded min-h-[100px] resize-y"
             placeholder="Enter your response..."
           />

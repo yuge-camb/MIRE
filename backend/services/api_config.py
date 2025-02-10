@@ -29,7 +29,7 @@ class APIConfig:
         load_dotenv(dotenv_path)
 
         # API Configuration
-        self.openai_api_key = os.getenv('LLM_API_KEY_Experiment')
+        self.openai_api_key = os.getenv('LLM_API_KEY_DEV')
         if not self.openai_api_key:
             raise ValueError("OPENAI_API_KEY not found in environment variables")
             

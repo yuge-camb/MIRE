@@ -25,6 +25,11 @@ export const useSurveyStore = create(
       sessionId: null,
       submissionStatus: '',
       surveyStarted: false,
+      // Activity Tracking State
+      activityEvents: [], // Array of activity events
+      pauseResumeEvents: [], // Array of pause/resume events
+      isPaused: false,
+      lastPauseStart: null,
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -252,6 +257,117 @@ export const useSurveyStore = create(
           [uuid]: status
         }
       })),
+      
+      // Methods for activity tracking
+      // Dynamic windowing for activity events
+      addActivityEvent: (event) => set(state => {
+        if (state.isPaused) return state; 
+        
+        const WINDOW_SIZE = 120000; // 120 seconds buffer
+        const currentTime = Date.now();
+        
+        // Add new event
+        const newEvents = [...state.activityEvents, event];
+        
+        // Keep events based on their effective age (actual time minus pauses)
+        return {
+          activityEvents: newEvents.filter(e => {
+            const eventAge = currentTime - e.timestamp;
+            
+            // Calculate total pause time since this event
+            const pauseDuration = state.pauseResumeEvents
+              .filter(p => p.timestamp > e.timestamp && p.timestamp <= currentTime)
+              .reduce((total, pause, index, arr) => {
+                if (pause.eventType === 'pause') {
+                  const pauseEnd = arr[index + 1]?.timestamp || currentTime;
+                  return total + (pauseEnd - pause.timestamp);
+                }
+                return total;
+              }, 0);
+            
+            const effectiveAge = eventAge - pauseDuration;
+            return effectiveAge <= WINDOW_SIZE;
+          })
+        };
+      }),
+
+      // Called when feedback form opens
+      pauseActivityTracking: () => set(state => {
+        if (state.isPaused) return state;
+
+        const pauseEvent = {
+          type: 'system',
+          eventType: 'pause',
+          timestamp: Date.now(),
+          timestampString: new Date().toISOString()
+        };
+
+        return {
+          isPaused: true,
+          lastPauseStart: Date.now(),
+          pauseResumeEvents: [...state.pauseResumeEvents, pauseEvent]
+        };
+      }),
+
+      // Called when feedback form closes
+      resumeActivityTracking: () => set(state => {
+        if (!state.isPaused) return state;
+
+        const resumeEvent = {
+          type: 'system',
+          eventType: 'resume',
+          timestamp: Date.now(),
+          timestampString: new Date().toISOString(),
+          context: {
+            pauseDuration: state.lastPauseStart ? Date.now() - state.lastPauseStart : 0
+          }
+        };
+
+        return {
+          isPaused: false,
+          lastPauseStart: null,
+          pauseResumeEvents: [...state.pauseResumeEvents, resumeEvent]
+        };
+      }),
+
+      // Used when sending activity timeline to server
+      getActivityTimeline: (responseTime) => {
+        const state = get();
+        const TARGET_DURATION = 60000; // Want 60s of activity, but might not have this much
+        const endTime = responseTime;
+        
+        // Get all events up to response time, sorted newest to oldest
+        const relevantEvents = state.activityEvents
+          .filter(event => event.timestamp <= endTime)
+          .sort((a, b) => b.timestamp - a.timestamp);
+      
+        // Take all events if we have less than 60s worth,
+        // otherwise take events until we have 60s worth
+        const timelineEvents = relevantEvents.length > 0 ? 
+          [...relevantEvents].reverse() : // Reverse back to chronological order if we have events
+          [];
+          
+        // Get the start time from either:
+        // - First event timestamp if we have events
+        // - Response time if we somehow have no events
+        const startTime = timelineEvents.length > 0 ? 
+          timelineEvents[0].timestamp : 
+          endTime;
+      
+        // Get all pause/resume events in this period
+        const timelinePauses = state.pauseResumeEvents.filter(
+          event => event.timestamp >= startTime && event.timestamp <= endTime
+        );
+      
+        return {
+          events: timelineEvents,
+          pauseResumeEvents: timelinePauses,
+          startTime,
+          endTime,
+          // Include information about whether this is a full 60s window
+          isFullDuration: (endTime - startTime) >= TARGET_DURATION
+        };
+      },
 
       // Intervention Management
       addIntervention: (intervention) => set(state => ({
@@ -324,6 +440,8 @@ export const useSurveyStore = create(
             activeInterventionsAtResponse: activeCount
           }
         );
+        const timeline = state.getActivityTimeline(responseTime);
+        state.wsService?.sendActivityTimeline(interventionId, timeline);
 
         // If no text update needed, just return intervention update
         if (!newText) {

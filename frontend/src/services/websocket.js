@@ -239,6 +239,20 @@ export class WebSocketService {
     });
   }
   
+  sendActivityTimeline(interventionId, activityTimeline) {
+    this.sendMessage({
+      type: 'activity_timeline',
+      interventionId,
+      timestamp: new Date().toISOString(),
+      data: {
+        events: activityTimeline.events,
+        pauseResumeEvents: activityTimeline.pauseResumeEvents,
+        startTime: activityTimeline.startTime,
+        endTime: activityTimeline.endTime
+      }
+    });
+  }
+
   sendInterventionFeedback(feedbackData) {
     this.sendMessage({
       type: 'intervention_feedback',
