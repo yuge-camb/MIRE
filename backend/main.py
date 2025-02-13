@@ -51,6 +51,7 @@ async def websocket_endpoint(websocket: WebSocket):
             elif data["type"] == "session_start":
                 session_id = data["sessionId"]
                 logger.create_session_directory(session_id)
+                session_state["segments"] = data.get("segments", {})   #Initialize session state      
 
             elif data["type"] == "segment_update":
                 uuid = data["uuid"]

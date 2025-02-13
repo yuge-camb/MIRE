@@ -30,6 +30,9 @@ export const useSurveyStore = create(
       pauseResumeEvents: [], // Array of pause/resume events
       isPaused: false,
       lastPauseStart: null,
+      //Bulk Dismissal at survey end
+      bulkDismissalMode: false, // Tracks if in bulk dismissal mode
+      bulkDismissalInterventions: [], // Stores interventions marked for bulk dismissal
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -67,7 +70,13 @@ export const useSurveyStore = create(
         segments: {},
         analysisStatus: {},
         interventions: [],
-        segmentTimings: {}
+        segmentTimings: {},
+        lastAnalyzedTexts: {},
+        segmentEdits: {},
+        activityEvents: [],
+        pauseResumeEvents: [],
+        bulkDismissalMode: false, 
+        bulkDismissalInterventions: [] 
       })),
       
       // Segment Management
@@ -561,7 +570,62 @@ export const useSurveyStore = create(
           ]
         };
       }),
+      //Bulk Dismissal
+      setBulkDismissalMode: (enabled) => set({ 
+        bulkDismissalMode: enabled,
+        // Clear bulk interventions when disabling
+        bulkDismissalInterventions: enabled ? get().bulkDismissalInterventions : []
+      }),
+      
+      // Mark all active interventions for bulk dismissal
+      startBulkDismissal: () => set(state => {
+        const activeInterventions = state.interventions.filter(int => 
+          !int.response && 
+          !int.responseTime && 
+          !int.isStale
+        );
+        
+        return {
+          bulkDismissalMode: true,
+          bulkDismissalInterventions: activeInterventions
+        };
+      }),
+      
+      // Handle bulk feedback submission
+      submitBulkFeedback: (feedbackData) => set(state => {
+        // For each intervention in bulk list
+        state.bulkDismissalInterventions.forEach(int => {
+          // Use existing respondToIntervention logic
+          state.respondToIntervention(
+            int.id, 
+            'dismiss', // Same response as individual dismiss
+            null,      // No text changes for dismiss
+            null,       // No target UUID needed
+            true       // Add parameter to mark feedback as submitted immediately
+          );
+          
+          // Then submit feedback using existing method
+          state.submitInterventionFeedback(int.id, feedbackData);
+        });
 
+        return {
+          bulkDismissalMode: false,
+          bulkDismissalInterventions: []
+        };
+      }),
+
+      // Instruction Panel
+      showInstructions: false,
+
+      // Add these methods to the store
+      toggleInstructions: () => set(state => ({ 
+        showInstructions: !state.showInstructions 
+      })),
+
+      setShowInstructions: (show) => set({ 
+        showInstructions: show 
+      }),
+      
       // Debug Helpers
       setDebugMode: (enabled) => set({ debugMode: enabled }),
       toggleDebugMode: () => set(state => ({ 

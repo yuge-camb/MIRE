@@ -26,7 +26,6 @@ export class WebSocketService {
         this.status = 'connected';
         this.reconnectAttempts = 0;
         this.processQueue();
-
         // Send initial state using direct property access
         this.sendMessage({
           type: 'sync_state',

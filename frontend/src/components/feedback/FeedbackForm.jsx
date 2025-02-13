@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
-const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
-  const [issueValidation, setIssueValidation] = useState('');
+const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention,  isBulkDismissal, bulkCount }) => {
+  const [issueValidation, setIssueValidation] = useState(isBulkDismissal ? 'no' : '');
   const [partialExplanation, setPartialExplanation] = useState('');
-  const [activity, setActivity] = useState('');
+  const [activity, setActivity] = useState(isBulkDismissal ? 'at survey submission' : ''); // Set initial activity to "at survey submission" if bulk dismissal
   const [otherActivity, setOtherActivity] = useState('');
   const [timingRating, setTimingRating] = useState(3);
   const [focusImpact, setFocusImpact] = useState(3);
@@ -27,7 +27,7 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
       timingRating,
       focusImpact,
       experienceFeedback,
-      interventionId: intervention.id,
+      ...(isBulkDismissal ? {} : { interventionId: intervention.id }),
       timestamp: new Date().toISOString()
     });
     resetForm();
@@ -38,10 +38,21 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-lg mt-12 mb-4">
-        {/* Header */}
         <div className="sticky top-0 bg-white p-2 border-b rounded-t-lg">
           <h2 className="text-lg font-semibold">Provide Feedback</h2>
-          <p className="text-sm text-gray-600 mt-2">Your feedback is mandatory for every intervention you deal with. They help inform how useful/timely each intervention is. Thank you!</p>
+          {isBulkDismissal ? (
+            <>
+              <p className="text-sm text-gray-600 mt-2">
+                You are submitting one feedback form for {bulkCount} interventions you've chosen not to address.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600 mt-2">
+                Your feedback is mandatory for every intervention you deal with. They help inform how useful/timely each intervention is. Thank you!
+              </p>
+            </>
+          )}
         </div>
 
         {/* Scrollable Content */}
@@ -92,8 +103,10 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
                 {[
                   'Typing new requirement',
                   'Editing previous requirements',
+                  'Just finished editing/typing',
+                  'Pausing to think/review',
                   'Dealing with other interventions',
-                  'Thinking/Pausing/Reviewing',
+                  'At survey submission',
                   'Other'
                 ].map((option) => (
                   <div key={option}>
@@ -125,7 +138,7 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  How well did the timing of this intervention align with your work flow?
+                  How well did the timing of this intervention align with your work flow? (Move slider to rate)
                 </label>
                 <input
                   type="range"
@@ -143,7 +156,7 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                How disruptive was this intervention to your focus?
+                How disruptive was this intervention to your focus? (Move slider to rate)
                 </label>
                 <input
                   type="range"
@@ -187,7 +200,12 @@ const FeedbackForm = ({ isOpen, onClose, onSubmit, intervention }) => {
           <button
             onClick={handleSubmit}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            disabled={!issueValidation || !activity || (activity === 'other' && !otherActivity)}
+            disabled={
+              !issueValidation || 
+              !activity || 
+              (activity === 'other' && !otherActivity) ||
+              (issueValidation === 'partially' && !partialExplanation)
+            }
           >
             Submit
           </button>
