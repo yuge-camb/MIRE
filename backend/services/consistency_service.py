@@ -19,7 +19,7 @@ class ConsistencyService:
         self.tokenizer = AutoTokenizer.from_pretrained('cross-encoder/nli-deberta-v3-small', use_fast=False)
         self.contradiction_threshold = 0.9
         self.extreme_threshold = 0.95
-        self.consistent_sampling_rate = 0.3  # 30% sampling rate for consistent cases
+        self.consistent_sampling_rate = 0.2  # 20% sampling rate for consistent cases
 
     def _should_trigger_intervention(self, contradiction_score: float) -> bool:
         """
