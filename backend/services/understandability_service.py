@@ -10,18 +10,17 @@ import random
 
 @dataclass
 class AmbiguityResult:
-    # detected: bool
-    is_ambiguous: bool  # From yes/no answer
+    detected: bool
     confidence: float  # Probability of that answer, logprob converted to probability
-    intervention_triggered: bool  # Whether to show intervention
     trigger_phrase: Optional[str] = None
     suggestions: List[str] = None
     intervention_type: Optional[str] = None  # 'multiple_choice' or 'clarification'
 
 class DetectorService:
-    def __init__(self, llm_manager: LLMManager):
+    def __init__(self, llm_manager, intervention_service):
         """Initialize with LLMManager for request coordination"""
         self.llm = llm_manager
+        self.intervention_service = intervention_service
         
         # Load ambiguity types
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -37,35 +36,14 @@ class DetectorService:
         # Define confidence thresholds 
         self.HIGH_CONFIDENCE = 0.7
         self.MEDIUM_CONFIDENCE = 0.5
-        
-        # Data Collection threshold
-        self.extreme_threshold = 0.8
-        self.unambiguous_sampling_rate = 0.5  # 50% sampling rate for unambiguous cases
 
         # Build system prompts
         self.detection_prompt = self._build_detection_prompt()
-        self.interpretation_prompt = self._build_interpretation_prompt()
-        
-    def _should_trigger_intervention(self, is_ambiguous: bool, confidence: float) -> bool:
-        """
-        Triggers intervention:
-        - Always for highly ambiguous cases with high confidence
-        - Randomly (unambiguous_sampling_rate) for highly unambiguous cases with high confidence
-        """
-        if confidence >= self.extreme_threshold:
-            if is_ambiguous:
-                return True  # Always trigger for high-confidence ambiguous
-            else:
-                return random.random() < self.unambiguous_sampling_rate  # Random sampling for unambiguous
-                
-        return False
     
     async def detect_ambiguity(self, text: str, question_idx:int) -> AmbiguityResult:
         """Detect ambiguity using logprobs analysis"""
         try:
             logging.info(f"🔍 Starting ambiguity detection for: {text[:50]}...")
-            # initialising intervention_triggered
-            intervention_triggered = False
             question_text = self.questions[str(question_idx)]
             analysis_prompt = f"Question being answered: {question_text}\n\nResponse to analyze: {text}"
             # Submit detection request through LLMManager
@@ -90,78 +68,37 @@ class DetectorService:
             
             logprobs_content = result['choices'][0].logprobs.content[0]  # Get first token
             confidence = self._logprob_to_probability(logprobs_content.logprob)
-
-            # In data collection, triggering interventions for both highly ambiguous AND highly unambiguous cases
-            if self._should_trigger_intervention(is_ambiguous, confidence):
-                interp_result = await self.llm.submit_request_async(
-                    messages=[
-                        {"role": "system", "content": self.interpretation_prompt},
-                        {"role": "user", "content": analysis_prompt}
-                    ],
-                    task_type="analysis",
-                    model="gpt-4",
-                    max_tokens=200,
-                    temperature=0.7
-                )
-                
-                try:
-                    if 'error' not in interp_result:
-                        parsed = json.loads(interp_result['choices'][0].message.content)
-                        logging.info(f"🎯 [Understandability] {'Ambiguous' if is_ambiguous else 'Unambiguous'} with confidence {confidence:.2f} -> Intervention triggered")
-                        return AmbiguityResult(
-                            is_ambiguous=is_ambiguous,  # Keep original detection
-                            confidence=confidence,
-                            intervention_triggered=True,
-                            intervention_type='multiple_choice' if parsed.get('interpretations') else 'clarification',
-                            trigger_phrase=parsed.get('trigger_phrase'),
-                            suggestions=parsed.get('interpretations')
-                        )
-                except (json.JSONDecodeError, KeyError) as e:
-                    logging.error(f"Failed to parse interpretation: {e}")
-                    intervention_triggered=False
-
-            # Basic return for no intervention/failed parsing 
-            return AmbiguityResult(is_ambiguous=is_ambiguous, intervention_triggered=intervention_triggered, confidence=confidence)
     
-            # # The regular case where it is not data collection
-            # if not is_ambiguous:
-            #     logging.info(f"No ambiguity detected. Confidence: {confidence:.2f}")
-            #     return AmbiguityResult(detected=False, confidence=confidence)
+            if not is_ambiguous:
+                logging.info(f"No ambiguity detected. Confidence: {confidence:.2f}")
+                return AmbiguityResult(detected=False, confidence=confidence)
             
-            # logging.info(f"Ambiguity detected with confidence: {confidence:.2f}")
+            logging.info(f"Ambiguity detected with confidence: {confidence:.2f}")
 
-            # if confidence >= self.MEDIUM_CONFIDENCE:
-            #     # Get interpretations if confidence is high enough
-                
-            #     interp_result = await self.llm.submit_request_async(
-            #         messages=[
-            #             {"role": "system", "content": self.interpretation_prompt},
-            #             {"role": "user", "content": analysis_prompt}
-            #         ],
-            #         task_type="analysis",
-            #         model="gpt-4",
-            #         max_tokens=200,
-            #         temperature=0.7
-            #     )
-                
-            #     if 'error' not in interp_result:
-            #         try:
-            #             parsed = json.loads(interp_result['choices'][0].message.content)
-            #             return AmbiguityResult(
-            #                 detected=True,
-            #                 confidence=confidence,
-            #                 intervention_type='multiple_choice' if confidence >= self.HIGH_CONFIDENCE else 'clarification',
-            #                 trigger_phrase=parsed['trigger_phrase'],
-            #                 suggestions=parsed['interpretations'] if confidence >= self.HIGH_CONFIDENCE else None
-            #             )
-            #         except (json.JSONDecodeError, KeyError) as e:
-            #             logging.error(f"Failed to parse interpretation: {e}")
+           
+            # Get interpretations if confidence is high enough
+            if confidence >=self.MEDIUM_CONFIDENCE:
+                intervention_type = "multiple_choice" if confidence >= self.HIGH_CONFIDENCE else "clarification"
+                # Generate intervention
+                intervention = await self.intervention_service.generate_ambiguity_intervention(
+                    text=text,
+                    intervention_type = intervention_type,
+                    analysis_prompt=analysis_prompt
+                )
+
+                return AmbiguityResult(
+                    detected=True,
+                    confidence=confidence,
+                    intervention_type=intervention_type,
+                    trigger_phrase=intervention.trigger_phrase,
+                    suggestions=intervention.suggestions
+                )
             
-            # return AmbiguityResult(detected=True, confidence=confidence)
-            
+            return AmbiguityResult(detected=True, confidence=confidence)
+        
         except Exception as e:
             logging.error(f"❌ Error in ambiguity detection: {e}")
-            return AmbiguityResult(intervention_triggered=False, confidence=0.0)
+            return AmbiguityResult(detected=False, confidence=0.0)
 
     def _logprob_to_probability(self, logprob: float) -> float:
         """Convert logprob to probability"""
@@ -219,63 +156,9 @@ class DetectorService:
             
         return "\n".join(prompt_parts)
 
-    def _build_interpretation_prompt(self) -> str:
-        """Build interpretation prompt"""
-        # Previous interpretation prompt building code remains the same
-        prompt_parts = [
-            """You are an expert requirement analyst analysing raw responses from a requirement elicitation survey for ambiguity in a university engineering module review system context.
-            
-            You will receive:
-            1. The survey question being answered
-            2. A response that needs interpretation
-            
-            Generate interpretations that specifically address how the ambiguous response could be understood in the context of the original question.
-            
-            Based on our ambiguity database, here are examples of how different types of ambiguity can be interpreted:"""
-        ]
-        
-        for amb_type, details in self.ambiguity_types.items():
-            if 'subtypes' in details:
-                prompt_parts.append(f"\n{amb_type.upper()} AMBIGUITY EXAMPLES:")
-                if 'definition' in details:
-                    prompt_parts.append(f"General definition: {details['definition']}")
-                else:
-                    prompt_parts.append("General definition: Not provided")
-                
-                for subtype, subtype_details in details['subtypes'].items():
-                    if 'example' in subtype_details:
-                        example = subtype_details['example']
-                        prompt_parts.append(f"\nSubtype: {subtype}")
-                        prompt_parts.append(f"When encountering: \"{example['text']}\"")
-                        prompt_parts.append("Possible interpretations:")
-                        for idx, interp in enumerate(example['interpretations'], 1):
-                            prompt_parts.append(f"{idx}. {interp}")
-        
-        prompt_parts.append("""
-        Following these examples, provide interpretations for the part where you considered most ambiguous.
-        Rules:
-        1. Generate exactly 3 distinct interpretations
-        2. Make interpretations specific and contextually relevant to what was being asked
-        3. Follow the style of examples shown above
-        4. Each interpretation should be written as a direct replacement for the trigger phrase, 
-            i.e. when user chooses to apply the interpretation to replace the trigger phrase, the overall answer should still flow naturally
-    
-        Format your response as a JSON object with exactly this structure:
-        {
-            "interpretations": [
-                "first interpretation",
-                "second interpretation", 
-                "third interpretation"
-            ],
-            "trigger_phrase": "specific ambiguous phrase"
-        }
-        """)
-        
-        return "\n".join(prompt_parts)
-
     def get_intervention_options(self, ambiguity_result: AmbiguityResult) -> Optional[Dict]:
         """Generate appropriate intervention based on confidence and type"""
-        if not ambiguity_result.intervention_triggered:
+        if not ambiguity_result.detected:
             return None
             
         if ambiguity_result.intervention_type == 'multiple_choice':
