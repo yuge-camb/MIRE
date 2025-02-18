@@ -28,7 +28,7 @@ llm_manager = LLMManager()
 log_dir = os.path.join(os.path.dirname(__file__), 'logs')
 os.makedirs(log_dir, exist_ok=True)
 logger = Logger(log_dir)
-intervention_service = InterventionService(logger)
+intervention_service = InterventionService(llm_manager=llm_manager)
 analysis_service = AnalysisService(llm_manager=llm_manager, websocket_handler=None, intervention_service=intervention_service, logger = logger)
 
 @app.websocket("/ws")

@@ -17,7 +17,7 @@ class AnalysisService:
                  intervention_service, 
                  logger):
         # Initialize sub-services
-        self.detector = DetectorService(llm_manager)
+        self.detector = DetectorService(llm_manager, intervention_service)
         self.consistency = ConsistencyService()  
         self.ws = websocket_handler
         self.logger = logger
@@ -198,14 +198,14 @@ class AnalysisService:
             )
 
             logging.info(f"✅ [Analysis] Completed parallel analysis for UUID={request.uuid}")
-            logging.info(f"🎯 [Understandability] Ambiguity interventions triggered: {ambiguity_result.intervention_triggered}")
-            logging.info(f"🔄 [Consistency] Issues found: {len(consistency_result.contradictions) if consistency_result.intervention_triggered else 0}")
+            logging.info(f"🎯 [Understandability] Ambiguity interventions triggered: {ambiguity_result.detected}")
+            logging.info(f"🔄 [Consistency] Issues found: {len(consistency_result.contradictions) if consistency_result.detected else 0}")
 
             # Combine results
             interventions = []
 
             # Add ambiguity intervention if triggered
-            if ambiguity_result.intervention_triggered:
+            if ambiguity_result.detected:
                 intervention_id = str(uuid.uuid4()) # Generate unique ID for intervention to be used in frontend display
                 interventions.append({
                     "id": intervention_id,
@@ -220,7 +220,6 @@ class AnalysisService:
                     "type": "ambiguity_analysis",
                     "intervention_id": intervention_id,
                     "data": {  # Put all analysis details in data field like other logs
-                        "is_ambiguous": ambiguity_result.is_ambiguous,
                         "confidence": ambiguity_result.confidence,
                         "trigger_phrase": ambiguity_result.trigger_phrase,
                         "suggested_interpretations": ambiguity_result.suggestions,
@@ -230,7 +229,7 @@ class AnalysisService:
                 })
 
             # Add consistency interventions if triggered
-            if consistency_result.intervention_triggered:
+            if consistency_result.detected:
                 for contradiction in consistency_result.contradictions:
                     intervention_id = str(uuid.uuid4()) # Generate unique ID for intervention to be used in frontend display
                     interventions.append({
