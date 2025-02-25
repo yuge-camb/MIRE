@@ -101,11 +101,12 @@ const TextSegment = ({ questionId, segmentId }) => {
   return (
     <div className="flex gap-4">
       <div className="flex-grow relative">
+      <div className="w-full border rounded min-h-[100px] resize-y overflow-hidden relative p-0 m-0">
         <div
           contentEditable
           dangerouslySetInnerHTML={{ __html: displayText() }}
           onClick={handleHighlightClick}
-          className="w-full p-3 border rounded min-h-[100px]"
+          className="w-full h-full p-3 absolute top-0 left-0"
         />
         <textarea
           value={text}
@@ -113,9 +114,10 @@ const TextSegment = ({ questionId, segmentId }) => {
           onBlur={handleBlur}    
           onFocus={handleFocus} 
           data-segment-id={uuid} 
-          className="w-full p-3 border rounded min-h-[100px] resize-y absolute top-0 left-0 opacity-50"
+          className="w-full h-full p-3 absolute top-0 left-0 opacity-50 resize-none"
           placeholder="Enter your response..."
         />
+      </div>
         {/* Render warning boxes for inline inconsistency interventions*/}
         <div className="absolute bottom-2 right-2 flex gap-1">
           {inlineInterventions
