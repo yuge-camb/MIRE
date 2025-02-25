@@ -4,6 +4,7 @@ import SurveyContainer from './components/survey/SurveyContainer';
 import ChatInterface from './components/chat/ChatInterface';
 import DebugPanel from './components/debug/DebugPanel';
 import FeedbackManager from './components/feedback/FeedbackManager';
+import ToolBox from './components/survey/SurveyTool';
 
 function App() {
   const { 
@@ -22,10 +23,11 @@ function App() {
     <div className="min-h-screen bg-gray-50 p-8">
       {debugMode && <DebugPanel />}
       <SurveyContainer />
+      <ToolBox />
       {/* {activeChat !== undefined && (
         <ChatInterface questionId={activeChat} />
       )} */}
-      <FeedbackManager />
+      {/* <FeedbackManager /> */}
     </div>
   );
 }

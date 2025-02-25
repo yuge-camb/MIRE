@@ -5,7 +5,8 @@ import torch
 import torch.nn.functional as F
 import logging
 import asyncio
-import random
+import os
+import json
 
 @dataclass
 class ContradictionResult:
@@ -17,6 +18,16 @@ class ConsistencyService:
         self.model = AutoModelForSequenceClassification.from_pretrained('cross-encoder/nli-deberta-v3-small')
         self.tokenizer = AutoTokenizer.from_pretrained('cross-encoder/nli-deberta-v3-small', use_fast=False)
         self.contradiction_threshold = 0.9
+        # Load questions 
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        questions_path = os.path.join(current_dir, 'questions_stage1.json')
+        with open(questions_path, 'r') as f:
+            self.questions = json.load(f)['questions']
+    
+    def _add_context(self, text: str, question_idx: int) -> str:
+        """Add question context to the statement."""
+        question_text = self.questions[str(question_idx)]
+        return f"In a requirement elicitation survey about the university module review system, when asked '{question_text}', the stakeholder responded: {text}"
 
     async def check_consistency(self, current_segment: Dict, previous_segments: List[Dict]) -> ContradictionResult:
         """Check consistency against previous segments"""
@@ -36,12 +47,22 @@ class ConsistencyService:
                         await asyncio.sleep(0)  # Allow other tasks
                         logging.info(f"🔄 [Consistency] Starting check for UUID={current_segment['uuid']} against {len(previous_segments)} previous segments")
                         logging.info(f"💭 [Consistency] Comparing segments:")
-                        logging.info(f"Previous segment [{prev_segment['uuid']}]: {prev_segment['text'][:100]}...")
-                        logging.info(f"Current segment [{current_segment['uuid']}]: {current_segment['text'][:100]}...")
                         
+                        
+                        # Add question context to both segments
+                        prev_text_with_context = self._add_context(
+                            prev_segment['text'], 
+                            prev_segment.get('question_idx', 0)  # Default to 0 if not provided
+                        )
+                        current_text_with_context = self._add_context(
+                            current_segment['text'], 
+                            current_segment.get('question_idx', 0)
+                        )
+                        logging.info(f"Previous segment [{prev_segment['uuid']}]: {prev_text_with_context[:100]}...")
+                        logging.info(f"Current segment [{current_segment['uuid']}]: {current_text_with_context[:100]}...")
                         inputs = self.tokenizer(
-                            [prev_segment['text']],
-                            [current_segment['text']],
+                            [prev_text_with_context],
+                            [current_text_with_context],
                             padding=True,
                             truncation=True,
                             return_tensors="pt"
