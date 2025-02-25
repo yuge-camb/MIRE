@@ -7,7 +7,7 @@ import os
 
 @dataclass
 class AmbiguityIntervention:
-    id: str
+    # id: str
     trigger_phrase: str
     suggestions: Optional[List[str]] = None
 
@@ -24,7 +24,6 @@ class InterventionService:
 
     async def generate_ambiguity_intervention(self, text: str, intervention_type: str, analysis_prompt: str) -> AmbiguityIntervention:
         """Generate appropriate intervention based on confidence"""
-        intervention_id = str(uuid.uuid4())
         # Get interpretations from LLM
         interp_result = await self.llm.submit_request_async(
                     messages=[
@@ -40,7 +39,6 @@ class InterventionService:
             try:
                 parsed = json.loads(interp_result['choices'][0].message.content)
                 return AmbiguityIntervention(
-                    id=intervention_id,
                     trigger_phrase=parsed['trigger_phrase'],
                     suggestions=parsed['interpretations'] if intervention_type == "multiple_choice" else None
                 )

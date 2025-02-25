@@ -9,21 +9,45 @@ const TextSegment = ({ questionId, segmentId }) => {
     segments,
     setAnswer,
     setActiveEditingSegment,
-    // removeSegment,
     setSegmentEditStart,
-    updateSegmentTiming
+    updateSegmentTiming,
+    interventions,
+    getInterventionDisplayMode
   } = useSurveyStore();
 
   const [uuid] = useState(() => uuidv4());
+  const [openInterventionId, setOpenInterventionId] = useState(null);
 
-  // Move initialization to effect
   useEffect(() => {
     setAnswer(questionId, segmentId, '', uuid);
-  }, []); // Run once on mount
+  }, []);
 
-  // Get current segmentIdx from segments state
   const currentSegmentIdx = segments[uuid]?.segmentIdx ?? segmentId;
   const text = answers[questionId]?.[segmentId] || '';
+  
+  // Get inline interventions
+  const inlineInterventions = interventions.filter(int => 
+    int && 
+    int.uuid === uuid && 
+    !int.response &&
+    !int.responseTime &&
+    !int.isStale &&
+    getInterventionDisplayMode(int) === 'inline'
+  );
+  
+
+  // Create display text with highlights
+  const displayText = () => {
+    let result = text;
+    inlineInterventions.forEach(int => {
+      const triggerPhrase = int.trigger_phrase;
+      result = result.replace(
+        triggerPhrase,
+        `<span class="bg-yellow-100 bg-opacity-70 border-b-2 border-yellow-300 cursor-pointer relative z-10 pointer-events-auto" data-intervention-id="${int.id}">${triggerPhrase}</span>`
+      );
+    });
+    return result;
+  };
 
   const handleTextChange = (e) => {
     const newText = e.target.value;
@@ -31,46 +55,76 @@ const TextSegment = ({ questionId, segmentId }) => {
   };
 
   const handleBlur = () => {
-    // Called when leaving/unfocusing from this segment
-    setActiveEditingSegment(null);  
-    updateSegmentTiming(uuid, text);  // End timing when focus ends
+    setActiveEditingSegment(null);
+    updateSegmentTiming(uuid, text);
   };
 
   const handleFocus = () => {
-    // Called when focusing on this segment
     setActiveEditingSegment(uuid);
-    setSegmentEditStart(uuid);  // Start timing when focus begins
+    setSegmentEditStart(uuid);
   };
 
-  // const handleDelete = () => {
-  //   removeSegment(uuid);
-  // };
+  const handleHighlightClick = (e) => {
+    // alert(`Clicked on intervention`);
+    const span = e.target.closest('span[data-intervention-id]');
+    if (span) {
+      const interventionId = span.dataset.interventionId;
+      // trackInterventionInteraction(interventionId);
+      setOpenInterventionId(interventionId);
+      console.log("Setting open intervention to:", interventionId); // Debugging
+    }
+  };
+
+  // Close popover when clicking outside (not dismissed)
+  useEffect(() => {
+    if (openInterventionId) {
+      const handleClickOutside = (e) => {
+        // Don't close if clicked on a highlight
+        if (e.target.closest('[data-intervention-id]')) {
+          return;
+        }
+        
+        // Don't close if clicked inside a popover
+        if (e.target.closest('.popover-content')) {
+          return;
+        }
+        
+        // Otherwise, close the popover
+        setOpenInterventionId(null);
+      };
+      
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openInterventionId]);
 
   return (
-    <div className="relative">
-      <div className="flex gap-4">
-        <div className="flex-grow">
-          <textarea
-            value={text}
-            onChange={handleTextChange}
-            onBlur={handleBlur}    
-            onFocus={handleFocus} 
-            data-segment-id={uuid} 
-            className="w-full p-3 border rounded min-h-[100px] resize-y"
-            placeholder="Enter your response..."
-          />
-        </div>
-        {/* <button
-          onClick={handleDelete}
-          className="h-8 px-2 text-gray-500 hover:text-red-500"
-        >
-          🗑️
-        </button> */}
-  
-        {/* Added to same flex row instead of below */}
-        <div className="w-96">
-          <InterventionDisplay uuid={uuid} />
-        </div>
+    <div className="flex gap-4">
+      <div className="flex-grow relative">
+        <div
+          contentEditable
+          dangerouslySetInnerHTML={{ __html: displayText() }}
+          onClick={handleHighlightClick}
+          className="w-full p-3 border rounded min-h-[100px]"
+        />
+        <textarea
+          value={text}
+          onChange={handleTextChange}
+          onBlur={handleBlur}    
+          onFocus={handleFocus} 
+          data-segment-id={uuid} 
+          className="w-full p-3 border rounded min-h-[100px] resize-y absolute top-0 left-0 opacity-50"
+          placeholder="Enter your response..."
+        />
+      </div>
+
+      {/* Side panel - always present */}
+      <div className="w-96">
+        <InterventionDisplay 
+          uuid={uuid}
+          openInterventionId={openInterventionId}
+          // onClosePopover={() => setOpenInterventionId(null)}
+        />
       </div>
     </div>
   );

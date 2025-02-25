@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSurveyStore } from '../../stores/useSurveyStore';
+import * as Popover from '@radix-ui/react-popover';
+import { usePopper } from 'react-popper';
 
 const RadioButton = ({ isSelected }) => (
   <div 
@@ -65,95 +67,154 @@ const InterventionWrapper = ({ intervention, children }) => {
   );
 };
 
-const AmbiguityChoiceIntervention = ({ intervention, onApply, onDismiss }) => {
+const AmbiguityChoiceIntervention = ({ intervention, onApply, onDismiss, isOpen}) => {
+  const displayMode = useSurveyStore(state => state.getInterventionDisplayMode(intervention));
   const [selectedOption, setSelectedOption] = useState(null);
   const [showOther, setShowOther] = useState(false);
   const [otherText, setOtherText] = useState('');
+
+  const [referenceElement, setReferenceElement] = useState(null);
+  const [popperElement, setPopperElement] = useState(null);
+  const { styles, attributes } = usePopper(referenceElement, popperElement, {
+    placement: 'bottom-start',
+    modifiers: [{ name: 'offset', options: { offset: [0, 10] } }]
+  });
+  
+  // Find and set the reference element when isOpen changes
+  useEffect(() => {
+    if (isOpen) {
+      const highlight = document.querySelector(`span[data-intervention-id="${intervention.id}"]`);
+      setReferenceElement(highlight);
+    }
+  }, [isOpen, intervention.id]);
+
+
+  const content = (
+    <div className="space-y-2">
+      {intervention.suggestions.map((suggestion, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            setSelectedOption(idx);
+            setShowOther(false);
+          }}
+          className="flex-1 text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
+        >
+          <RadioButton isSelected={selectedOption === idx} />
+          {suggestion}
+        </button>
+        <button
+          onClick={() => navigator.clipboard.writeText(suggestion)}
+          className="px-2 py-1 text-xs text-gray-500 hover:bg-yellow-100 rounded"
+          title="Copy text"
+        >
+          📋
+        </button>
+      </div>
+      ))}
+      <button
+        onClick={() => {
+          setShowOther(true);
+          setSelectedOption('other');
+        }}
+        className="w-full text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
+      >
+        <RadioButton isSelected={selectedOption === 'other'} />
+        Other (please specify)
+      </button>
+      {showOther && (
+        <textarea
+          className="w-full p-2 text-sm border rounded mt-2"
+          rows={2}
+          value={otherText}
+          onChange={(e) => setOtherText(e.target.value)}
+          placeholder="Specify your interpretation..."
+        />
+      )}
+      <div className="flex gap-2 justify-end mt-3">
+        <button
+          onClick={onDismiss}
+          className="px-3 py-1.5 text-sm hover:bg-yellow-100 rounded transition-colors"
+        >
+          Dismiss
+        </button>
+        <button
+            onClick={() => {
+              let textToApply;
+              if (selectedOption === 'other') {
+                textToApply = otherText;
+              } else {
+                textToApply = intervention.suggestions[selectedOption];
+              }
+              if (textToApply) onApply(textToApply);
+            }}
+            disabled={intervention.isStale || selectedOption === null || (selectedOption === 'other' && !otherText)}
+            className="px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 rounded transition-colors disabled:opacity-50"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+  );
+
+  if (displayMode === 'inline') {
+    // Only render the popover when isOpen is true
+    if (isOpen) {
+      return (
+        <InterventionWrapper intervention={intervention}>
+          <div
+            ref={setPopperElement}
+            style={styles.popper}
+            {...attributes.popper}
+            className="bg-white p-4 border rounded-lg shadow-lg z-50 popover-content"
+          >
+            <div className="space-y-3">
+            {content}
+            </div>
+          </div>
+      </InterventionWrapper>
+    );
+  }
+    // Return null if in inline mode but not open
+    return null;
+  }
 
   return (
     <InterventionWrapper intervention={intervention}>
       <StaleIndicator intervention={intervention}>
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
-          <h3 className="text-sm font-medium mb-2">🤔 Choose the Most Accurate Interpretation</h3>
+        <div className="space-y-3"> 
+        <h3 className="text-sm font-medium mb-2">🤔 Choose the Most Accurate Interpretation</h3>
           <p className="text-sm mb-3">
             The phrase '<strong>{intervention.trigger_phrase}</strong>' could be interpreted in different ways:
           </p>
-          <div className="space-y-2">
-            {intervention.suggestions.map((suggestion, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setSelectedOption(idx);
-                  setShowOther(false);
-                }}
-                className="flex-1 text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
-              >
-                <RadioButton isSelected={selectedOption === idx} />
-                {suggestion}
-              </button>
-              <button
-                onClick={() => navigator.clipboard.writeText(suggestion)}
-                className="px-2 py-1 text-xs text-gray-500 hover:bg-yellow-100 rounded"
-                title="Copy text"
-              >
-                📋
-              </button>
-            </div>
-            ))}
-            <button
-              onClick={() => {
-                setShowOther(true);
-                setSelectedOption('other');
-              }}
-              className="w-full text-left px-3 py-2 text-sm rounded hover:bg-yellow-100 transition-colors flex items-center group"
-            >
-              <RadioButton isSelected={selectedOption === 'other'} />
-              Other (please specify)
-            </button>
-            {showOther && (
-              <textarea
-                className="w-full p-2 text-sm border rounded mt-2"
-                rows={2}
-                value={otherText}
-                onChange={(e) => setOtherText(e.target.value)}
-                placeholder="Specify your interpretation..."
-              />
-            )}
-            <div className="flex gap-2 justify-end mt-3">
-              <button
-                onClick={onDismiss}
-                className="px-3 py-1.5 text-sm hover:bg-yellow-100 rounded transition-colors"
-              >
-                Dismiss
-              </button>
-              <button
-                onClick={() => {
-                  let textToApply;
-                  if (selectedOption === 'other') {
-                    textToApply = otherText;
-                  } else {
-                    textToApply = intervention.suggestions[selectedOption];
-                  }
-                  if (textToApply) onApply(textToApply);
-                }}
-                disabled={intervention.isStale || selectedOption === null || (selectedOption === 'other' && !otherText)}
-                className="px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 rounded transition-colors disabled:opacity-50"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
+          {content}
+          </div> 
         </div>
       </StaleIndicator>
     </InterventionWrapper>
   );
 };
 
-const AmbiguityClarificationIntervention = ({ intervention, onApply, onDismiss }) => (
-  <InterventionWrapper intervention={intervention}>
-    <StaleIndicator intervention={intervention}>
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
-        <h3 className="text-sm font-medium mb-2">💭 Could you clarify?</h3>
+const AmbiguityClarificationIntervention = ({ intervention, onApply, onDismiss, isOpen }) => {
+  const displayMode = useSurveyStore(state => state.getInterventionDisplayMode(intervention));
+
+  const [referenceElement, setReferenceElement] = useState(null);
+  const [popperElement, setPopperElement] = useState(null);
+  const { styles, attributes } = usePopper(referenceElement, popperElement, {
+    placement: 'bottom-start',
+    modifiers: [{ name: 'offset', options: { offset: [0, 10] } }]
+  });
+  
+  // Find and set the reference element when isOpen changes
+  useEffect(() => {
+    if (isOpen) {
+      const highlight = document.querySelector(`span[data-intervention-id="${intervention.id}"]`);
+      setReferenceElement(highlight);
+    }
+  }, [isOpen, intervention.id]);
+  
+  const content = (
         <div className="space-y-3">
           <p className="text-sm">
             Please clarify what you mean by '<strong>{intervention.trigger_phrase}</strong>':
@@ -188,10 +249,42 @@ const AmbiguityClarificationIntervention = ({ intervention, onApply, onDismiss }
             </button>
           </div>
         </div>
-      </div>
-    </StaleIndicator>
-  </InterventionWrapper>
-);
+  );
+
+  if (displayMode === 'inline') {
+    // Only render the popover when isOpen is true
+    if (isOpen) {
+      return (
+        <InterventionWrapper intervention={intervention}>
+          <div
+            ref={setPopperElement}
+            style={styles.popper}
+            {...attributes.popper}
+            className="bg-white p-4 border rounded-lg shadow-lg z-50 popover-content"
+          >
+            {content}
+          </div>
+      </InterventionWrapper>
+    );
+  }
+    // Return null if in inline mode but not open
+    return null;
+  }
+
+  return (
+    <InterventionWrapper intervention={intervention}>
+      <StaleIndicator intervention={intervention}>
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
+        <div className="space-y-3">
+        <h3 className="text-sm font-medium mb-2">💭 Could you clarify?</h3>
+          {content}
+        </div>
+        </div>
+      </StaleIndicator>
+    </InterventionWrapper>
+  );
+};
+
 
 const InconsistencyIntervention = ({ intervention, onApply, onDismiss }) => {
   const { segments } = useSurveyStore();
@@ -279,7 +372,7 @@ const InconsistencyIntervention = ({ intervention, onApply, onDismiss }) => {
   );
 };
 
-const InterventionDisplay = ({ uuid }) => {
+const InterventionDisplay = ({ uuid, openInterventionId}) => {
   const { 
     segments,
     interventions, 
@@ -357,6 +450,7 @@ const InterventionDisplay = ({ uuid }) => {
                     intervention.trigger_phrase
                   )}
                   onDismiss={() => respondToIntervention(intervention.id, 'dismissed')}
+                  isOpen={openInterventionId === intervention.id}
                 />
               ) : intervention.type === 'ambiguity_clarification' ? (
                 <AmbiguityClarificationIntervention
@@ -367,6 +461,8 @@ const InterventionDisplay = ({ uuid }) => {
                     intervention.trigger_phrase
                   )}
                   onDismiss={() => respondToIntervention(intervention.id, 'dismissed')}
+                  isOpen={openInterventionId === intervention.id}
+
                 />
               ) : intervention.type === 'consistency' ? (
                 <InconsistencyIntervention
@@ -378,6 +474,7 @@ const InterventionDisplay = ({ uuid }) => {
                     newText
                   )}
                   onDismiss={() => respondToIntervention(intervention.id, 'dismissed')}
+
                 />
               ) : null
             )}

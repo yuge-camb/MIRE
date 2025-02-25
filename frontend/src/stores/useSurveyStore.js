@@ -33,6 +33,8 @@ export const useSurveyStore = create(
       //Bulk Dismissal at survey end
       bulkDismissalMode: false, // Tracks if in bulk dismissal mode
       bulkDismissalInterventions: [], // Stores interventions marked for bulk dismissal
+      //Display mode
+      globalDisplayMode: 'default', // 'default', 'panel' or 'inline'
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -441,6 +443,8 @@ export const useSurveyStore = create(
           response,
           newText,
           {
+            globalmode: state.globalDisplayMode,
+            mode: state.getInterventionDisplayMode(intervention),
             appearanceTime: new Date(intervention.appearanceTime).toISOString(),
             firstInteractionTime: new Date(intervention.firstInteractionTime).toISOString(),
             responseTime: new Date(responseTime).toISOString(),
@@ -549,6 +553,31 @@ export const useSurveyStore = create(
         )
       })),
 
+      // Intervention Display Mode
+      setGlobalDisplayMode: (mode) => set({ 
+        globalDisplayMode: mode 
+      }),
+      
+      // Helper to get effective display mode for an intervention
+      getInterventionDisplayMode: (intervention) => {
+        const state = get();
+        // If global mode is set to something other than default, use it
+        if (state.globalDisplayMode !== 'default') {
+          return state.globalDisplayMode;
+        }
+      
+        // Default rules based on intervention type
+        switch (intervention.type) {
+          case 'ambiguity_multiple_choice':
+            return 'panel';
+          case 'ambiguity_clarification':
+            return 'inline';
+          case 'consistency':
+            return 'panel';
+          default:
+            return 'panel';
+        }
+      },
 
       // Intervention Feedback Management
       submitInterventionFeedback: (interventionId, feedbackData) => set(state => {

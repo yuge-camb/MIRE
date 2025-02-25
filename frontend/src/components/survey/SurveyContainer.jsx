@@ -3,8 +3,8 @@ import QuestionSection from './QuestionSection';
 import { useSurveyStore} from '../../stores/useSurveyStore';
 import { v4 as uuidv4 } from 'uuid';
 import  ActivityTracker from './ActivityTracker';
-import InstructionsModal from './InstructionPanel';
 import { useState } from 'react';
+
 
 const QUESTIONS = [
   { id: 0, text: "If you were using an app to look up module reviews, what information would you want to see? (one point per response box)"},
@@ -69,8 +69,9 @@ const ReviewModal = ({ isOpen, onClose, activeCount }) => {
   );
 };
 
+
 const SurveyContainer = () => {
-  const { toggleDebugMode, debugMode, startSession, interventions, wsService, answers, submissionStatus, setSubmissionStatus, surveyStarted, setSurveyStarted, getActiveInterventions, startBulkDismissal, showInstructions, toggleInstructions  } = useSurveyStore();
+  const { toggleDebugMode, debugMode, startSession, wsService, answers, submissionStatus, setSubmissionStatus, surveyStarted, setSurveyStarted, getActiveInterventions, startBulkDismissal} = useSurveyStore();
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showBulkDismissButton, setShowBulkDismissButton] = useState(false);
 
@@ -112,13 +113,6 @@ const SurveyContainer = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Module Review System</h1>
         <div className="flex gap-2">
-          <button
-            onClick={toggleInstructions}
-            className="px-3 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1"
-          >
-            <span role="img" aria-label="instructions">ℹ️</span>
-            Instructions
-          </button>
           <button
             onClick={toggleDebugMode}
             className={`px-3 py-1 rounded ${
@@ -162,11 +156,6 @@ const SurveyContainer = () => {
           </button>
         )}
       </div>
-
-    <InstructionsModal 
-      isOpen={showInstructions}
-      onClose={toggleInstructions}
-    />
 
     <ReviewModal 
       isOpen={showReviewModal}
