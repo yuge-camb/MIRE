@@ -286,7 +286,9 @@ const AmbiguityClarificationIntervention = ({ intervention, onApply, onDismiss, 
 };
 
 
-const InconsistencyIntervention = ({ intervention, onApply, onDismiss }) => {
+const InconsistencyIntervention = ({ intervention, onApply, onDismiss, isOpen }) => {
+  const displayMode = useSurveyStore(state => state.getInterventionDisplayMode(intervention));
+
   const { segments } = useSurveyStore();
   const [showEdit, setShowEdit] = useState(false);
   const [editingText, setEditingText] = useState('');
@@ -296,81 +298,127 @@ const InconsistencyIntervention = ({ intervention, onApply, onDismiss }) => {
   const prevQuestionIdx = previousSegment?.questionIdx ?? intervention.previous_segment.questionIdx;
   const prevSegmentIdx = previousSegment?.segmentIdx ?? intervention.previous_segment.segmentIdx;
 
-  return (
-    <InterventionWrapper intervention={intervention}>
-      <StaleIndicator intervention={intervention}>
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
-          <h3 className="text-sm font-medium mb-2">⚠️ Possible Inconsistency</h3>
-          <div className="space-y-3 text-sm">
-            <p>This may contradict with a previous statement:</p>
-            <div className="p-2 bg-white/50 rounded">
-              <p className="text-xs text-gray-500">
-                Previous statement (Q{prevQuestionIdx + 1}, Segment {prevSegmentIdx + 1}):
-              </p>
-              <p className="mt-1">"{intervention.previous_segment.text}"</p>
-            </div>
-            
-            {!showEdit ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setEditingType('previous');
-                    setShowEdit(true);
-                  }}
-                  disabled={intervention.isStale}  // Disable both edit buttons when stale
-                  className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors disabled:opacity-50"
-                >
-                  Edit Previous
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingType('current');
-                    setShowEdit(true);
-                  }}
-                  disabled={intervention.isStale}  // Disable both edit buttons when stale
-                  className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors disabled:opacity-50"
-                >
-                  Edit Current
-                </button>
-                <button onClick={onDismiss} className="px-3 py-1.5 hover:bg-red-100 rounded text-sm transition-colors">
-                  Dismiss
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <textarea
-                  className="w-full p-2 text-sm border rounded"
-                  rows={3}
-                  value={editingText}
-                  onChange={(e) => setEditingText(e.target.value)}
-                  placeholder={`Type your revised ${editingType === 'current' ? 'current' : 'previous'} statement...`}
-                />
-                <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={() => {
-                      setShowEdit(false);
-                      setEditingText('');
-                    }}
-                    className="px-3 py-1.5 text-sm hover:bg-red-100 rounded transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => onApply(editingType === 'current' ? 'editCurrent' : 'editPrevious', editingText)}
-                    disabled={intervention.isStale || !editingText.trim()}
-                    className="px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 rounded transition-colors disabled:opacity-50"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            )}
+  const [referenceElement, setReferenceElement] = useState(null);
+  const [popperElement, setPopperElement] = useState(null);
+  const { styles, attributes } = usePopper(referenceElement, popperElement, {
+    placement: 'bottom-start',
+    modifiers: [{ name: 'offset', options: { offset: [0, 10] } }]
+  });
+  
+  // Reference element is the warning box itself for inconsistency
+  useEffect(() => {
+    if (isOpen) {
+      const warningBox = document.querySelector(`[data-warning-id="${intervention.id}"]`);
+      setReferenceElement(warningBox);
+    }
+  }, [isOpen, intervention.id]);
+
+  const content = (
+    <div className="space-y-3 text-sm">
+      <p>
+        {displayMode === 'inline' 
+          ? `This may contradict with response in Q${prevQuestionIdx + 1}, Segment ${prevSegmentIdx + 1}:` 
+          : 'This may contradict with a previous statement:'}
+      </p>
+      {displayMode === 'inline' ? (
+        <p className="mt-1 italic">"{intervention.previous_segment.text}"</p>
+      ) : (
+        <div className="p-2 bg-white/50 rounded">
+          <p className="text-xs text-gray-500">
+            Previous statement (Q{prevQuestionIdx + 1}, Segment {prevSegmentIdx + 1}):
+          </p>
+          <p className="mt-1">"{intervention.previous_segment.text}"</p>
+        </div>
+      )}
+      
+      {!showEdit ? (
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setEditingType('previous');
+              setShowEdit(true);
+            }}
+            disabled={intervention.isStale}
+            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors disabled:opacity-50"
+          >
+            Edit Previous
+          </button>
+          <button
+            onClick={() => {
+              setEditingType('current');
+              setShowEdit(true);
+            }}
+            disabled={intervention.isStale}
+            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 rounded text-sm transition-colors disabled:opacity-50"
+          >
+            Edit Current
+          </button>
+          <button onClick={onDismiss} className="px-3 py-1.5 hover:bg-red-100 rounded text-sm transition-colors">
+            Dismiss
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <textarea
+            className="w-full p-2 text-sm border rounded"
+            rows={3}
+            value={editingText}
+            onChange={(e) => setEditingText(e.target.value)}
+            placeholder={`Type your revised ${editingType === 'current' ? 'current' : 'previous'} statement...`}
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => {
+                setShowEdit(false);
+                setEditingText('');
+              }}
+              className="px-3 py-1.5 text-sm hover:bg-red-100 rounded transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onApply(editingType === 'current' ? 'editCurrent' : 'editPrevious', editingText)}
+              disabled={intervention.isStale || !editingText.trim()}
+              className="px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 rounded transition-colors disabled:opacity-50"
+            >
+              Apply
+            </button>
           </div>
         </div>
-      </StaleIndicator>
-    </InterventionWrapper>
+      )}
+    </div>
   );
-};
+
+  if (displayMode === 'inline') {
+    if (isOpen) {
+      return (
+          <InterventionWrapper intervention={intervention}>
+            <div
+              ref={setPopperElement}
+              style={styles.popper}
+              {...attributes.popper}
+              className="bg-white p-4 border rounded-lg shadow-lg z-50 popover-content"
+            >
+              {content}
+            </div>
+          </InterventionWrapper>
+        );
+      }
+      return null;
+  }
+  
+    // Default sidebar view
+    return (
+      <InterventionWrapper intervention={intervention}>
+        <StaleIndicator intervention={intervention}>
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+            <h3 className="text-sm font-medium mb-2">⚠️ Possible Inconsistency</h3>
+            {content}
+          </div>
+        </StaleIndicator>
+      </InterventionWrapper>
+    );
+  };
 
 const InterventionDisplay = ({ uuid, openInterventionId}) => {
   const { 
@@ -474,7 +522,7 @@ const InterventionDisplay = ({ uuid, openInterventionId}) => {
                     newText
                   )}
                   onDismiss={() => respondToIntervention(intervention.id, 'dismissed')}
-
+                  isOpen={openInterventionId === intervention.id}
                 />
               ) : null
             )}
