@@ -39,6 +39,7 @@ const TextSegment = ({ questionId, segmentId }) => {
   // Create display text with highlights
   const displayText = () => {
     let result = text;
+    // Handle ambiguity highlights first
     inlineInterventions.forEach(int => {
       const triggerPhrase = int.trigger_phrase;
       result = result.replace(
@@ -71,7 +72,6 @@ const TextSegment = ({ questionId, segmentId }) => {
       const interventionId = span.dataset.interventionId;
       // trackInterventionInteraction(interventionId);
       setOpenInterventionId(interventionId);
-      console.log("Setting open intervention to:", interventionId); // Debugging
     }
   };
 
@@ -116,6 +116,22 @@ const TextSegment = ({ questionId, segmentId }) => {
           className="w-full p-3 border rounded min-h-[100px] resize-y absolute top-0 left-0 opacity-50"
           placeholder="Enter your response..."
         />
+        {/* Render warning boxes for inline inconsistency interventions*/}
+        <div className="absolute bottom-2 right-2 flex gap-1">
+          {inlineInterventions
+            .filter(int => int.type === 'consistency')
+            .map((int, idx) => (
+              <span
+                key={int.id}
+                onClick={() => setOpenInterventionId(int.id)}
+                data-intervention-id={int.id}
+                data-warning-id={int.id}
+                className="inline-flex items-center px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs cursor-pointer"
+              >
+                ⚠️<sup>{idx + 1}</sup>
+              </span>
+            ))}
+        </div>
       </div>
 
       {/* Side panel - always present */}
