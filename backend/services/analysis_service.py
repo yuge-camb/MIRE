@@ -212,7 +212,8 @@ class AnalysisService:
                     "type": f"ambiguity_{ambiguity_result.intervention_type}", 
                     "trigger_phrase": ambiguity_result.trigger_phrase,
                     "suggestions": ambiguity_result.suggestions,
-                    "segment_uuid": request.uuid
+                    "segment_uuid": request.uuid,
+                    "confidence": ambiguity_result.confidence
                 })
 
                 # Log analysis result when an intervention is sent to the frontend
@@ -237,7 +238,8 @@ class AnalysisService:
                         "type": "consistency",
                         "previous_segment": contradiction['previous_segment'],
                         "current_segment": contradiction['current_segment'],
-                        "segment_uuid": request.uuid
+                        "segment_uuid": request.uuid,
+                        "confidence": contradiction['contradiction_score']
                     })
 
                 # Log analysis result when an intervention is sent to the frontend

@@ -66,6 +66,18 @@ const ToolBox = () => {
         </div>
       </div>
 
+          {/* Requirements Panel Toggle */}
+            {/* <button
+            onClick={toggleRequirementsPanel}
+            className={`w-full px-3 py-2 rounded text-sm ${
+              showRequirementsPanel ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+            } hover:bg-gray-200 transition-colors flex items-center gap-2`}
+            title="Toggle requirements panel"
+          >
+            <FileText size={16} />
+            <span>Requirements</span>
+          </button> */}
+
       <InstructionsModal 
         isOpen={showInstructions}
         onClose={toggleInstructions}
