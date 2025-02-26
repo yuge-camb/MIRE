@@ -36,6 +36,15 @@ export const useSurveyStore = create(
       //Display mode
       globalDisplayMode: 'default', // 'default', 'panel' or 'inline'
 
+      // Requirements Panel State
+      requirements: [], // Array of requirements
+      showRequirementsPanel: false, // Control visibility of requirements panel
+      generatingRequirements: {}, // Track which questions are generating requirements: {questionId: boolean}
+      lastInteractionTimes: {}, // Track when each question was last interacted with: {questionId: timestamp}
+      lastInterventionTimes: {}, // Track when each question last received an intervention: {questionId: timestamp}
+      stabilityCheckInterval: null, // Interval for checking stability
+      
+      
       // WebSocket Setup
       initializeWebSocket: () => {
         const wsService = new WebSocketService(get());
@@ -557,26 +566,101 @@ export const useSurveyStore = create(
       setGlobalDisplayMode: (mode) => set({ 
         globalDisplayMode: mode 
       }),
-      
-      // Helper to get effective display mode for an intervention
+
       getInterventionDisplayMode: (intervention) => {
         const state = get();
-        // If global mode is set to something other than default, use it
+        
+        // Helper function that applies confidence thresholds for each intervention type
+        const meetsConfidenceThreshold = (intervention) => {
+          const confidence = intervention.confidence || 0.5;
+          
+          switch(intervention.type) {
+            case 'ambiguity_multiple_choice':
+              return confidence > 0.8;
+            case 'ambiguity_clarification':
+              return confidence > 0.6;
+            case 'consistency':
+              return confidence > 0.95;
+            default:
+              return true;
+          }
+        };
+        
+        // If global mode is explicitly set, use that
         if (state.globalDisplayMode !== 'default') {
           return state.globalDisplayMode;
         }
-      
-        // Default rules based on intervention type
-        switch (intervention.type) {
-          case 'ambiguity_multiple_choice':
-            return 'panel';
-          case 'ambiguity_clarification':
-            return 'inline';
-          case 'consistency':
-            return 'panel';
-          default:
-            return 'panel';
+        
+        // Get question index for this intervention
+        const questionIdx = intervention.questionIdx || 
+                          state.segments[intervention.uuid]?.questionIdx || 
+                          0;
+        
+        // Get all active interventions for this question
+        const interventionsForThisQuestion = state.interventions.filter(int => {
+          // Only include active interventions
+          if (int.response || int.responseTime || int.isStale) {
+            return false;
+          }
+          
+          // Get the question index for this intervention
+          const intQuestionIdx = int.questionIdx || 
+                                state.segments[int.uuid]?.questionIdx || 
+                                0;
+          
+          // Only include interventions for the same question
+          return intQuestionIdx === questionIdx;
+        });
+        
+        // Count interventions already in panel mode
+        const panelInterventionsCount = interventionsForThisQuestion.filter(int => {
+          if (state.globalDisplayMode === 'default') {
+            // If in default mode, count ones that would be in panel based on confidence
+            return meetsConfidenceThreshold(int);
+          } else {
+            // Otherwise, check the actual display mode
+            return state.getInterventionDisplayMode(int) === 'panel';
+          }
+        }).length;
+
+        const max_panel_count = 3;
+        // If we have fewer than 3 panel interventions and this one meets the threshold,
+        // it can be in panel mode
+        if (panelInterventionsCount < max_panel_count && meetsConfidenceThreshold(intervention)) {
+          return 'panel';
         }
+        
+        // If we would have more than 3 panel interventions, rank by confidence
+        if (panelInterventionsCount >= max_panel_count) {
+        // Get type priority (ambiguity_choice first, then others)
+        const getTypePriority = (intervention) => {
+          if (intervention.type === 'ambiguity_multiple_choice') return 1;
+          return 2;
+        };
+
+        // When sorting interventions:
+        const sortedInterventions = [...interventionsForThisQuestion]
+          .filter(int => meetsConfidenceThreshold(int))
+          .sort((a, b) => {
+            // First sort by type priority
+            const typePriorityDiff = getTypePriority(a) - getTypePriority(b);
+            if (typePriorityDiff !== 0) return typePriorityDiff;
+            
+            // Then by confidence if type priority is the same
+            return (b.confidence || 0) - (a.confidence || 0);
+          });
+          
+          // Find this intervention's position in the sorted list
+          const position = sortedInterventions.findIndex(int => int.id === intervention.id);
+          
+          // If it's within the max_panel_count, show in panel
+          if (position < max_panel_count) {
+            return 'panel';
+          }
+        }
+        
+        // Default to inline for all other cases
+        return 'inline';
       },
 
       // Intervention Feedback Management
@@ -655,6 +739,184 @@ export const useSurveyStore = create(
         showInstructions: show 
       }),
       
+      // Functions for Requirements Panel
+      toggleRequirementsPanel: () => set(state => ({ 
+        showRequirementsPanel: !state.showRequirementsPanel 
+      })),
+
+      // Validate a requirement
+      validateRequirement: (requirementId, rating) => set(state => ({
+        requirements: state.requirements.map(req => 
+          req.id === requirementId 
+            ? { ...req, status: 'validated', rating } 
+            : req
+        )
+      })),
+
+      // Reject a requirement
+      rejectRequirement: (requirementId, reason = '') => set(state => ({
+        requirements: state.requirements.map(req => 
+          req.id === requirementId 
+            ? { ...req, status: 'rejected', rejectionReason: reason } 
+            : req
+        )
+      })),
+
+      // Check if requirements exist for a question
+      hasRequirementsForQuestion: (questionId) => {
+        const state = get();
+        return state.requirements.some(req => req.questionId === questionId);
+      },
+
+      // Get requirements for a question
+      getRequirementsForQuestion: (questionId) => {
+        const state = get();
+        return state.requirements.filter(req => req.questionId === questionId);
+      },
+
+      // Generate requirements for a question
+      generateRequirements: (questionId = null) => {
+        const state = get();
+        const wsService = state.wsService;
+        
+        if (!wsService) {
+          console.error('WebSocket service not initialized');
+          return;
+        }
+        
+        // If questionId is provided, generate for that specific question
+        if (questionId !== null) {
+          // Get all segments for this question
+          const questionSegments = Object.entries(state.segments)
+            .filter(([_, segment]) => segment.questionIdx === questionId)
+            .map(([uuid, segment]) => ({
+              uuid,
+              text: segment.text,
+              questionIdx: segment.questionIdx,
+              segmentIdx: segment.segmentIdx
+            }));
+          
+          // Set generating status
+          set(state => ({
+            generatingRequirements: {
+              ...state.generatingRequirements,
+              [questionId]: true
+            }
+          }));
+          
+          // Send websocket message to backend
+          wsService.sendMessage({
+            type: 'generate_requirements',
+            questionId,
+            segments: questionSegments
+          });
+          
+          return;
+        }
+        
+        // Otherwise, generate for all questions
+        // Get all unique question IDs
+        const questionIds = [...new Set(
+          Object.values(state.segments).map(segment => segment.questionIdx)
+        )];
+        
+        // For each question, send a separate request
+        questionIds.forEach(qId => {
+          state.generateRequirements(qId);
+        });
+      },
+
+      // Add requirements from the server response
+      addRequirements: (requirements) => set(state => {
+        const newRequirements = requirements.map(req => {
+          // Check if this requirement already exists
+          const existingIndex = state.requirements.findIndex(r => 
+            r.id === req.id || 
+            (r.text === req.text && r.questionId === req.questionId)
+          );
+          
+          if (existingIndex >= 0) {
+            const existing = state.requirements[existingIndex];
+            
+            // If the existing one is validated or rejected, keep its status
+            if (existing.status === 'validated' || existing.status === 'rejected') {
+              return existing;
+            }
+            
+            // Otherwise, this is a replacement (probably for a stale one)
+            return {
+              ...req,
+              id: req.id || existing.id, // Keep existing ID if new one doesn't have one
+              history: [...(existing.history || []), {
+                text: existing.text,
+                timestamp: new Date().toISOString()
+              }]
+            };
+          }
+          
+          // This is a completely new requirement
+          return {
+            ...req,
+            status: 'pending',
+            history: [],
+            createdAt: new Date().toISOString()
+          };
+        });
+        
+        // Filter out any stale or replaced requirements
+        const filteredExisting = state.requirements.filter(existing => {
+          return !newRequirements.some(newReq => 
+            newReq.id === existing.id || 
+            (newReq.text === existing.text && newReq.questionId === existing.questionId)
+          );
+        });
+        
+        return {
+          requirements: [...filteredExisting, ...newRequirements],
+          generatingRequirements: {
+            ...state.generatingRequirements,
+            [newRequirements[0]?.questionId]: false // Mark this question's generation as complete
+          }
+        };
+      }),
+
+      // Mark requirements as stale when linked segments change
+      markRequirementsStale: (segmentUuid) => set(state => {
+        const segment = state.segments[segmentUuid];
+        
+        if (!segment) return state;
+        
+        // Find requirements linked to this segment
+        return {
+          requirements: state.requirements.map(req => {
+            const isLinked = req.linkedSegments.includes(segment.segmentIdx) && 
+                            req.questionId === segment.questionIdx;
+            
+            if (isLinked && req.status === 'validated') {
+              return { ...req, status: 'stale' };
+            }
+            
+            return req;
+          })
+        };
+      }),
+
+      // Track interaction with a segment
+      trackSegmentInteraction: (questionId, segmentId) => set(state => ({
+        lastInteractionTimes: {
+          ...state.lastInteractionTimes,
+          [questionId]: Date.now()
+        }
+      })),
+
+      // Track when an intervention appears for a segment
+      trackInterventionAppearance: (questionId) => set(state => ({
+        lastInterventionTimes: {
+          ...state.lastInterventionTimes,
+          [questionId]: Date.now
+        }
+      })),
+
       // Debug Helpers
       setDebugMode: (enabled) => set({ debugMode: enabled }),
       toggleDebugMode: () => set(state => ({ 

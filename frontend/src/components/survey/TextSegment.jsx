@@ -117,7 +117,7 @@ const TextSegment = ({ questionId, segmentId }) => {
           className="w-full h-full p-3 absolute top-0 left-0 opacity-50 resize-none"
           placeholder="Enter your response..."
         />
-      </div>
+
         {/* Render warning boxes for inline inconsistency interventions*/}
         <div className="absolute bottom-2 right-2 flex gap-1">
           {inlineInterventions
@@ -134,6 +134,7 @@ const TextSegment = ({ questionId, segmentId }) => {
               </span>
             ))}
         </div>
+      </div>
       </div>
 
       {/* Side panel - always present */}
