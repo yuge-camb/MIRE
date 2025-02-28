@@ -110,10 +110,19 @@ export class WebSocketService {
           });
           break;
         
+        //Requirement Generation Related
+        case 'stability_response':
+          this.store.handleStabilityResponse(data.questionId, data.isStable);
+          break;
+        
+        case 'requirement_generation_complete':
+          this.store.handleRequirementGenerationComplete(data.questionId, data.requirements);
+          break;
+        
         case 'intervention_feedback_received':
           console.log('Feedback received confirmation:', data);
           break;
-      
+    
         case 'survey_submission_confirmed':
           console.log('Survey submission confirmed:', data);
           
@@ -256,6 +265,39 @@ export class WebSocketService {
     this.sendMessage({
       type: 'intervention_feedback',
       ...feedbackData
+    });
+  }
+
+  // Send stability check note based on soft timeout
+  sendStabilityCheck(questionId) {
+    this.sendMessage({
+      type: 'stability_check',
+      questionId,
+      timestamp: new Date().toISOString(),
+      sessionId: this.sessionId
+    });
+  }
+
+  // Send message to generate requirements for a question
+  sendGenerateRequirements(questionId, segments, triggerMode) {
+    // Now receiving the full segment objects with {uuid, text} from useSurveyStore
+    this.sendMessage({
+      type: 'generate_requirements',
+      questionId,
+      segments,  // Already contains full segment objects
+      triggerMode,
+      timestamp: new Date().toISOString(),
+      sessionId: this.sessionId
+    });
+  }
+
+  // Send message to discard in-progress requirement generation
+  sendDiscardRequirementGeneration(questionId) {
+    this.sendMessage({
+      type: 'discard_requirement_generation',
+      questionId,
+      timestamp: new Date().toISOString(),
+      sessionId: this.sessionId
     });
   }
   

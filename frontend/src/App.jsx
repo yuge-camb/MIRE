@@ -5,7 +5,7 @@ import ChatInterface from './components/chat/ChatInterface';
 import DebugPanel from './components/debug/DebugPanel';
 import FeedbackManager from './components/feedback/FeedbackManager';
 import ToolBox from './components/survey/SurveyTool';
-// import RequirementsPanel from './components/requirement/RequirementPanel';
+import RequirementsPanel from './components/requirement/RequirementPanel';
 
 function App() {
   const { 
@@ -25,7 +25,7 @@ function App() {
       {debugMode && <DebugPanel />}
       <SurveyContainer />
       <ToolBox />
-      {/* <RequirementsPanel /> */}
+      <RequirementsPanel />
       {/* {activeChat !== undefined && (
         <ChatInterface questionId={activeChat} />
       )} */}

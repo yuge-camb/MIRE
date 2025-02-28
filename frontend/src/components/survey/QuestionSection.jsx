@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { useSurveyStore } from '../../stores/useSurveyStore';
 import TextSegment from './TextSegment';
 
@@ -7,8 +7,15 @@ const QuestionSection = ({ question }) => {
     answers,
     addSegment,
     // removeSegment,
-    setActiveChat
+    // setActiveChat,
+    resetTimerIfActive,
+    handleManualGenerateRequirements,
+    // Get interventions to detect new ones
+    interventions
   } = useSurveyStore();
+
+  // Track previous intervention count for this question
+  const prevInterventionCountRef = useRef(0);
 
   // Get segments for this question
   const segmentIds = useMemo(() => 
@@ -16,6 +23,46 @@ const QuestionSection = ({ question }) => {
     [question.id, answers]
   );
   
+  // Get segment UUIDs for this question from answers
+  const segmentUuids = useMemo(() => {
+    const uuids = [];
+    Object.values(answers[question.id] || {}).forEach(text => {
+      // Find the UUID for this segment text
+      for (const [uuid, segment] of Object.entries(answers)) {
+        if (segment.questionIdx === question.id && segment.text === text) {
+          uuids.push(uuid);
+          break;
+        }
+      }
+    });
+    return uuids;
+  }, [question.id, answers]);
+  
+  // Count interventions for this question's segments
+  const interventionCount = useMemo(() => {
+    return interventions.filter(int => 
+      segmentUuids.includes(int.uuid) && 
+      !int.response && 
+      !int.responseTime
+    ).length;
+  }, [interventions, segmentUuids]);
+  
+  // Monitor for new interventions
+  useEffect(() => {
+    if (interventionCount > prevInterventionCountRef.current) {
+      // New intervention appeared
+      console.log(`New intervention detected for question ${question.id}`);
+      resetTimerIfActive(question.id);
+    }
+    prevInterventionCountRef.current = interventionCount;
+  }, [interventionCount, question.id, resetTimerIfActive]);
+  
+  // Handle "Generate Requirements" button click
+  const handleGenerateRequirements = (questionId) => {
+    console.log("Manually triggering requirement generation for question", questionId);
+    handleManualGenerateRequirements(questionId);
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow">
       <h2 className="text-lg font-semibold mb-4">
@@ -43,7 +90,7 @@ const QuestionSection = ({ question }) => {
         </button>
         
         <button
-          onClick={() => setActiveChat(question.id)}
+          onClick={() => handleGenerateRequirements(question.id)}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
         >
           📝 Generate Requirements 

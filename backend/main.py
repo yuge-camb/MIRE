@@ -4,11 +4,13 @@ from typing import Dict, Optional
 from services.logger import Logger
 from services.analysis_service import AnalysisService
 from services.intervention_service import InterventionService
+from services.requirement_service import RequirementService
 from services.llm_manager import LLMManager
 from models.data_models import AnalysisRequest, InterventionResponse
 from datetime import datetime
 import logging
 import os
+import asyncio
 
 app = FastAPI()
 llm_manager = LLMManager()
@@ -29,6 +31,7 @@ log_dir = os.path.join(os.path.dirname(__file__), 'logs')
 os.makedirs(log_dir, exist_ok=True)
 logger = Logger(log_dir)
 intervention_service = InterventionService(llm_manager=llm_manager)
+requirement_service = RequirementService(llm_manager=llm_manager, websocket_handler=None, logger=logger)
 analysis_service = AnalysisService(llm_manager=llm_manager, websocket_handler=None, intervention_service=intervention_service, logger = logger)
 
 @app.websocket("/ws")
@@ -38,6 +41,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Assign the websocket handler to analysis service
     analysis_service.ws = websocket
+    requirement_service.ws = websocket
 
     try:
         while True:
@@ -52,12 +56,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 session_id = data["sessionId"]
                 logger.create_session_directory(session_id)
                 session_state["segments"] = data.get("segments", {})   #Initialize session state      
-
+                await requirement_service.reset_state()
+                
             elif data["type"] == "segment_update":
                 uuid = data["uuid"]
                 text = data["text"]
                 question_idx = data["questionIdx"]
                 segment_idx = data["segmentIdx"]
+                intervention_mode = data.get("interventionMode", "on")
+                manual_trigger = data.get("isManualTrigger", False)
                 all_segments = data.get("all_segments", {})
                 logging.info(f"🔄 [WebSocket] Triggering analysis for UUID={data['uuid']}"
                             f"uuid={uuid}, text={text[:50]}..., "
@@ -72,13 +79,21 @@ async def websocket_endpoint(websocket: WebSocket):
                 }
 
                 # Handle analysis
-                await analysis_service.handle_segment_update(
+                if intervention_mode == "on" or manual_trigger == True:
+                    await analysis_service.handle_segment_update(
+                        uuid=uuid,
+                        text=text,
+                        question_idx=question_idx,
+                        segment_idx=segment_idx,
+                        all_segments=session_state["segments"]
+                    )
+
+                asyncio.create_task(requirement_service.handle_segment_update(
                     uuid=uuid,
                     text=text,
                     question_idx=question_idx,
                     segment_idx=segment_idx,
-                    all_segments=session_state["segments"]
-                )
+                ))
 
                 # Log edit event
                 logger.log({
@@ -86,6 +101,36 @@ async def websocket_endpoint(websocket: WebSocket):
                     "uuid": uuid,
                     "data": data,
                  })
+            
+            elif data["type"] == "stability_check":
+                # Handle inactivity timeouts
+                question_id = data["questionId"]
+                await requirement_service.get_question_stability(question_id)
+            
+            elif data["type"] == "generate_requirements":
+                question_id = data["questionId"]
+                segments = data["segments"]  # Now expecting full segment objects with {uuid, text}
+                trigger_mode = data["triggerMode"]
+                
+                # Handle requirement generation asynchronously
+                asyncio.create_task(requirement_service.generate_requirements(
+                    question_id=question_id,
+                    segments=segments,
+                    trigger_mode=trigger_mode
+                ))
+            
+            elif data["type"] == "discard_requirement_generation":
+                question_id = data["questionId"]
+                
+                # Handle discard request
+                await requirement_service.handle_discard_request(question_id)
+                
+                # Log the discard request
+                logger.log({
+                    "type": "requirement_generation_discard_request",
+                    "question_id": question_id,
+                    "timestamp": datetime.now().isoformat()
+                })
 
             elif data["type"] == "pause_analysis":
                 await analysis_service.pause_analysis()
