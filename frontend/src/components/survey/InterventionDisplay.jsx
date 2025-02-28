@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useSurveyStore } from '../../stores/useSurveyStore';
-import * as Popover from '@radix-ui/react-popover';
 import { usePopper } from 'react-popper';
 
 const RadioButton = ({ isSelected }) => (
@@ -56,7 +55,6 @@ const StaleIndicator = ({ intervention, children }) => {
 
 const InterventionWrapper = ({ intervention, children }) => {
   const { trackInterventionInteraction } = useSurveyStore();
-  
   return (
     <div 
       onClick={() => trackInterventionInteraction(intervention.id)}

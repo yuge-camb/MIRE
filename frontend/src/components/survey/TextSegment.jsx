@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSurveyStore } from '../../stores/useSurveyStore';
 import InterventionDisplay from './InterventionDisplay';
 import { v4 as uuidv4 } from 'uuid';
@@ -12,19 +12,40 @@ const TextSegment = ({ questionId, segmentId }) => {
     setSegmentEditStart,
     updateSegmentTiming,
     interventions,
-    getInterventionDisplayMode
+    getInterventionDisplayMode,
+    analyzeSegmentIfNeeded,
+    interventionMode,
+    markSegmentAsNeedsGeneration,
+    resetTimerIfActive
   } = useSurveyStore();
 
-  const [uuid] = useState(() => uuidv4());
+  const [uuid] = useState(() => {
+    // Check if there's already a UUID for this question/segment pair in the store
+    const { segments } = useSurveyStore.getState();
+    const existingSegmentUUID = Object.entries(segments)
+      .find(([_, segment]) => 
+        segment.questionIdx === questionId && 
+        segment.segmentIdx === segmentId
+      )?.[0];
+    return existingSegmentUUID || uuidv4();
+  });
   const [openInterventionId, setOpenInterventionId] = useState(null);
 
   useEffect(() => {
     setAnswer(questionId, segmentId, '', uuid);
+    // Initialize segment requirement state to needs_generation
+    markSegmentAsNeedsGeneration(uuid);
   }, []);
 
   const currentSegmentIdx = segments[uuid]?.segmentIdx ?? segmentId;
   const text = answers[questionId]?.[segmentId] || '';
-  
+
+  // Add manual analysis handler
+  const triggerManualAnalysis = () => {
+    analyzeSegmentIfNeeded(uuid, undefined, true); // Pass isManualTrigger as true
+    console.log(`Manual analysis triggered for segment ${uuid}`);
+  };
+
   // Get inline interventions
   const inlineInterventions = interventions.filter(int => 
     int && 
@@ -53,6 +74,8 @@ const TextSegment = ({ questionId, segmentId }) => {
   const handleTextChange = (e) => {
     const newText = e.target.value;
     setAnswer(questionId, currentSegmentIdx, newText, uuid);
+    // Reset timer for requirement generation if active
+    resetTimerIfActive(questionId);
   };
 
   const handleBlur = () => {
@@ -66,11 +89,9 @@ const TextSegment = ({ questionId, segmentId }) => {
   };
 
   const handleHighlightClick = (e) => {
-    // alert(`Clicked on intervention`);
     const span = e.target.closest('span[data-intervention-id]');
     if (span) {
       const interventionId = span.dataset.interventionId;
-      // trackInterventionInteraction(interventionId);
       setOpenInterventionId(interventionId);
     }
   };
@@ -136,6 +157,18 @@ const TextSegment = ({ questionId, segmentId }) => {
         </div>
       </div>
       </div>
+
+      {/* Add manual analysis button when intervention mode is off */}
+      {interventionMode === 'off' && (
+      <button
+        onClick={triggerManualAnalysis}
+        className="h-8 px-2 bg-blue-100 hover:bg-blue-200 rounded flex items-center gap-1 text-sm"
+        title="Check text for clarity and consistency"
+      >
+        <span>🔍</span>
+        <span className="text-xs text-gray-600">Review</span>
+      </button>
+    )}
 
       {/* Side panel - always present */}
       <div className="w-96">

@@ -33,17 +33,25 @@ export const useSurveyStore = create(
       //Bulk Dismissal at survey end
       bulkDismissalMode: false, // Tracks if in bulk dismissal mode
       bulkDismissalInterventions: [], // Stores interventions marked for bulk dismissal
+      //Intervention mode (auto/manual)
+      interventionMode: 'on', // 'on' or 'off'
       //Display mode
       globalDisplayMode: 'default', // 'default', 'panel' or 'inline'
-
-      // Requirements Panel State
-      requirements: [], // Array of requirements
-      showRequirementsPanel: false, // Control visibility of requirements panel
-      generatingRequirements: {}, // Track which questions are generating requirements: {questionId: boolean}
-      lastInteractionTimes: {}, // Track when each question was last interacted with: {questionId: timestamp}
-      lastInterventionTimes: {}, // Track when each question last received an intervention: {questionId: timestamp}
-      stabilityCheckInterval: null, // Interval for checking stability
-      
+      max_panel_count: 3, // Maximum number of panel interventions
+      //Inactivity tracking for requirement generation
+      inactivityTimers: {}, // Tracks timer IDs by question ID: { [questionId]: { softTimer, hardTimer } }
+      lastActivityTime: {}, // Tracks last activity timestamp by question ID
+      activeTimerQuestions: new Set(), // Tracks which questions have active timers
+      //Configuration constants
+      softInactivityThreshold: 10000, // 30 seconds for stability check
+      hardInactivityThreshold: 120000, // 120 seconds for forced generation
+      //Requirement generation
+      segmentRequirementState: {}, // Maps segment UUIDs to their requirement state: 'needs_generation', 'generating', 'no_need_generation'
+      pendingRequirementGeneration: {}, // Tracks which questions have pending generation requests
+      //Requirement panel management
+      requirements: {}, // Organized by questionId: { [questionId]: [requirement objects] }
+      requirementStates: {}, // Track status by requirementId: { [requirementId]: 'pending'|'validated'|'rejected' }
+      requirementRatings: {}, // Store ratings: { [requirementId]: 1-5 }
       
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -87,7 +95,16 @@ export const useSurveyStore = create(
         activityEvents: [],
         pauseResumeEvents: [],
         bulkDismissalMode: false, 
-        bulkDismissalInterventions: [] 
+        bulkDismissalInterventions: [],
+        // Also reset timer-related state
+        inactivityTimers: {},
+        activeTimerQuestions: new Set(),
+        lastActivityTime: {},
+        pendingRequirementGeneration: {},
+        segmentRequirementState: {},
+        requirements: {}, 
+        requirementStates: {},
+        requirementRatings: {},
       })),
       
       // Segment Management
@@ -132,44 +149,6 @@ export const useSurveyStore = create(
           }
         }));
       },
-
-      // removeSegment: (uuid) => set(state => {
-      //   // Check if segment exists
-      //   if (!state.segments[uuid]) return state;
-
-      //   const { [uuid]: removed, ...remainingSegments } = state.segments;
-      //   const questionId = removed.questionIdx;
-      //   const segmentToRemove = removed.segmentIdx;
-
-      //   // Create new answers object excluding removed segment
-      //   const newAnswers = { ...state.answers };
-      //   if (questionId !== undefined) {
-      //     const currentAnswers = state.answers[questionId] || {};
-      //     delete currentAnswers[segmentToRemove];
-
-      //     // Reindex remaining answers
-      //     const reindexedAnswers = Object.values(currentAnswers)
-      //       .reduce((acc, text, i) => {
-      //         acc[i] = text;
-      //         return acc;
-      //       }, {});
-
-      //     newAnswers[questionId] = reindexedAnswers;
-      //   }
-
-      //   // Also remove any analysis status
-      //   const newAnalysisStatus = { ...state.analysisStatus };
-      //   delete newAnalysisStatus[uuid];
-
-      //   const { [uuid]: _, ...remainingAnalyzedTexts } = state.lastAnalyzedTexts;
-
-      //   return {
-      //     segments: remainingSegments,
-      //     answers: newAnswers,
-      //     analysisStatus: newAnalysisStatus,
-      //     lastAnalyzedTexts: remainingAnalyzedTexts
-      //   };
-      // }),
       
       // Tracking segment edit start and end times
       setSegmentEditStart: (uuid) => set(state => ({
@@ -211,18 +190,34 @@ export const useSurveyStore = create(
       }),
 
       // Reusable function to analyze a segment if needed
-      analyzeSegmentIfNeeded: (uuid, newText = undefined) => {
+      analyzeSegmentIfNeeded: (uuid, newText = undefined, isManualTrigger = false) => {
         const state = get();
         const segment = state.segments[uuid];
         // Accepts optional newText for intervention updates, otherwise uses current segment text for direct editing case
         const textToAnalyze = newText !== undefined ? newText : segment?.text;
-        const lastAnalyzedText = state.lastAnalyzedTexts[uuid];
+        const lastAnalyzedText = isManualTrigger ? undefined : state.lastAnalyzedTexts[uuid];
 
-        if (textToAnalyze?.length >= 10 && 
+
+        if (textToAnalyze?.length >= 5 && 
             (lastAnalyzedText === undefined || textToAnalyze !== lastAnalyzedText)) {
           // Increment edit count when analysis is triggered
           const currentEditCount = state.segmentEdits[uuid] || 0;
           set({ segmentEdits: { ...state.segmentEdits, [uuid]: currentEditCount + 1 } });
+          
+          // Get question ID for this segment
+          const questionId = segment?.questionIdx;
+          // Start timer if needed for this question
+          if (questionId !== undefined && !isManualTrigger) {
+            state.startTimerIfNeeded(questionId);
+          }
+
+          // Check if segment had requirements and handle that separately
+          const wasInNoNeedGeneration = state.segmentRequirementState[uuid] === 'no_need_generation';
+          if (wasInNoNeedGeneration && !isManualTrigger) {
+            // Handle requirement updates in a separate function to avoid cascading method calls
+            state.handleSegmentChangeWithRequirements(uuid);
+          }
+
           // Send segment update to server
           state.wsService?.sendMessage({
             type: 'segment_update',
@@ -230,6 +225,8 @@ export const useSurveyStore = create(
             text: textToAnalyze,
             questionIdx: segment.questionIdx,
             segmentIdx: segment.segmentIdx,
+            interventionMode: state.interventionMode,
+            isManualTrigger: isManualTrigger,
             editCount: currentEditCount + 1,
             all_segments: state.segments  // Include all segments for consistency checks
           });
@@ -398,16 +395,35 @@ export const useSurveyStore = create(
           appearanceTime: Date.now(),
           firstInteractionTime: null, 
 
-        }]
+        }],
+        globalDisplayMode: 'default'
       })),
 
-      trackInterventionInteraction: (interventionId) => set(state => ({
-        interventions: state.interventions.map(int =>
-          int.id === interventionId && !int.firstInteractionTime
-            ? { ...int, firstInteractionTime: Date.now() }
-            : int
-        )
-      })),
+      trackInterventionInteraction: (interventionId) => {
+        // First get the intervention
+        const state = get();
+        const intervention = state.interventions.find(int => int.id === interventionId);
+        
+        if (intervention) {
+          // Get the segment UUID from the intervention
+          const segmentUuid = intervention.uuid;
+          
+          // Find the segment to get its question ID
+          const segment = state.segments[segmentUuid];
+          const questionId = segment.questionIdx;
+          // Reset the timer when there are intervention interactions
+          state.resetTimerIfActive(questionId);
+        }
+        
+        // Update intervention state (this part stays the same)
+        set(state => ({
+          interventions: state.interventions.map(int =>
+            int.id === interventionId && !int.firstInteractionTime
+              ? { ...int, firstInteractionTime: Date.now() }
+              : int
+          )
+        }));
+      },
 
       // Count active interventions - excluding stale ones
       getActiveInterventions: (targetUuid = null) => {
@@ -473,10 +489,9 @@ export const useSurveyStore = create(
         // Determine which UUID to update
         const uuid = targetUuid || intervention.uuid;
         const segment = state.segments[uuid];
-        // // Dealing with removed segments
-        // if (!segment) {
-        //   return { interventions: updatedInterventions };
-        // }
+
+        // Reset timer when responding to interventions
+        state.resetTimerIfActive(segment.questionId);
       
         // First determine which segments we updated
         const currentUuid = intervention.uuid;
@@ -623,15 +638,14 @@ export const useSurveyStore = create(
           }
         }).length;
 
-        const max_panel_count = 3;
-        // If we have fewer than 3 panel interventions and this one meets the threshold,
+        // If we have fewer than max_panel_count panel interventions and this one meets the threshold,
         // it can be in panel mode
-        if (panelInterventionsCount < max_panel_count && meetsConfidenceThreshold(intervention)) {
+        if (panelInterventionsCount < state.max_panel_count && meetsConfidenceThreshold(intervention)) {
           return 'panel';
         }
         
         // If we would have more than 3 panel interventions, rank by confidence
-        if (panelInterventionsCount >= max_panel_count) {
+        if (panelInterventionsCount >= state.max_panel_count) {
         // Get type priority (ambiguity_choice first, then others)
         const getTypePriority = (intervention) => {
           if (intervention.type === 'ambiguity_multiple_choice') return 1;
@@ -654,7 +668,7 @@ export const useSurveyStore = create(
           const position = sortedInterventions.findIndex(int => int.id === intervention.id);
           
           // If it's within the max_panel_count, show in panel
-          if (position < max_panel_count) {
+          if (position < state.max_panel_count) {
             return 'panel';
           }
         }
@@ -730,7 +744,6 @@ export const useSurveyStore = create(
       // Instruction Panel
       showInstructions: false,
 
-      // Add these methods to the store
       toggleInstructions: () => set(state => ({ 
         showInstructions: !state.showInstructions 
       })),
@@ -738,185 +751,528 @@ export const useSurveyStore = create(
       setShowInstructions: (show) => set({ 
         showInstructions: show 
       }),
-      
-      // Functions for Requirements Panel
-      toggleRequirementsPanel: () => set(state => ({ 
-        showRequirementsPanel: !state.showRequirementsPanel 
+
+      // Intervention mode toggle
+      toggleInterventionMode: () => set(state => ({ 
+        interventionMode: state.interventionMode === 'on' ? 'off' : 'on' 
       })),
 
-      // Validate a requirement
-      validateRequirement: (requirementId, rating) => set(state => ({
-        requirements: state.requirements.map(req => 
-          req.id === requirementId 
-            ? { ...req, status: 'validated', rating } 
-            : req
-        )
-      })),
-
-      // Reject a requirement
-      rejectRequirement: (requirementId, reason = '') => set(state => ({
-        requirements: state.requirements.map(req => 
-          req.id === requirementId 
-            ? { ...req, status: 'rejected', rejectionReason: reason } 
-            : req
-        )
-      })),
-
-      // Check if requirements exist for a question
-      hasRequirementsForQuestion: (questionId) => {
+      // Requirement Generation Methods
+      // For starting the inactivity timer (only happens with first segment update for a question with segments needing generation)
+      startTimerIfNeeded: (questionId) => {
         const state = get();
-        return state.requirements.some(req => req.questionId === questionId);
-      },
-
-      // Get requirements for a question
-      getRequirementsForQuestion: (questionId) => {
-        const state = get();
-        return state.requirements.filter(req => req.questionId === questionId);
-      },
-
-      // Generate requirements for a question
-      generateRequirements: (questionId = null) => {
-        const state = get();
-        const wsService = state.wsService;
         
-        if (!wsService) {
-          console.error('WebSocket service not initialized');
-          return;
+        // Only start if not already tracking AND has segments needing generation
+        if (!state.activeTimerQuestions.has(questionId) && 
+            state.questionHasSegmentsNeedingGeneration(questionId)) {
+          state.startInactivityMonitor(questionId);
+        }
+      },
+
+      // For resetting the timer (any activity after started)
+      resetTimerIfActive: (questionId) => {
+        // Just call recordQuestionActivity which already has the check
+        // Called in response to segment edit, intervention interactions, and intervention responses
+        get().recordQuestionActivity(questionId);
+      },
+
+      // Start inactivity monitoring for a question
+      startInactivityMonitor: (questionId) => set(state => {
+        console.log(`Starting inactivity monitor for question ${questionId}`);
+        
+        // Clear any existing timers
+        if (state.inactivityTimers[questionId]) {
+          if (state.inactivityTimers[questionId].softTimer) {
+            clearTimeout(state.inactivityTimers[questionId].softTimer);
+          }
+          if (state.inactivityTimers[questionId].hardTimer) {
+            clearTimeout(state.inactivityTimers[questionId].hardTimer);
+          }
         }
         
-        // If questionId is provided, generate for that specific question
-        if (questionId !== null) {
-          // Get all segments for this question
-          const questionSegments = Object.entries(state.segments)
-            .filter(([_, segment]) => segment.questionIdx === questionId)
-            .map(([uuid, segment]) => ({
-              uuid,
-              text: segment.text,
-              questionIdx: segment.questionIdx,
-              segmentIdx: segment.segmentIdx
-            }));
-          
-          // Set generating status
-          set(state => ({
-            generatingRequirements: {
-              ...state.generatingRequirements,
-              [questionId]: true
+        const now = Date.now();
+        
+        // Create new timers
+        const softTimerId = setTimeout(() => {
+          const currentState = get();
+          currentState.handleSoftInactivityTimeout(questionId);
+        }, state.softInactivityThreshold);
+        
+        const hardTimerId = setTimeout(() => {
+          const currentState = get();
+          currentState.handleHardInactivityTimeout(questionId);
+        }, state.hardInactivityThreshold);
+        
+        // Add to active timer questions set
+        const newActiveTimers = new Set(state.activeTimerQuestions);
+        newActiveTimers.add(questionId);
+        
+        return {
+          inactivityTimers: {
+            ...state.inactivityTimers,
+            [questionId]: {
+              softTimer: softTimerId,
+              hardTimer: hardTimerId
             }
-          }));
-          
-          // Send websocket message to backend
-          wsService.sendMessage({
-            type: 'generate_requirements',
-            questionId,
-            segments: questionSegments
-          });
-          
+          },
+          lastActivityTime: {
+            ...state.lastActivityTime,
+            [questionId]: now
+          },
+          activeTimerQuestions: newActiveTimers
+        };
+      }),
+
+      // Record activity for a question
+      recordQuestionActivity: (questionId) => set(state => {
+        // Only update if we're tracking this question
+        if (!state.activeTimerQuestions.has(questionId)) {
+          return state;
+        }
+        
+        console.log(`Activity recorded for question ${questionId}`);
+
+        // Check if this question has pending generation
+        if (state.pendingRequirementGeneration[questionId]) {
+          state.handleEditDuringGeneration(questionId);
+        }
+        
+        // Clear existing timers if any
+        if (state.inactivityTimers[questionId]) {
+          if (state.inactivityTimers[questionId].softTimer) {
+            clearTimeout(state.inactivityTimers[questionId].softTimer);
+          }
+          if (state.inactivityTimers[questionId].hardTimer) {
+            clearTimeout(state.inactivityTimers[questionId].hardTimer);
+          }
+        }
+        
+        // Restart timers
+        const softTimerId = setTimeout(() => {
+          const currentState = get();
+          currentState.handleSoftInactivityTimeout(questionId);
+        }, state.softInactivityThreshold);
+        
+        const hardTimerId = setTimeout(() => {
+          const currentState = get();
+          currentState.handleHardInactivityTimeout(questionId);
+        }, state.hardInactivityThreshold);
+        
+        return {
+          lastActivityTime: {
+            ...state.lastActivityTime,
+            [questionId]: Date.now()
+          },
+          inactivityTimers: {
+            ...state.inactivityTimers,
+            [questionId]: {
+              softTimer: softTimerId,
+              hardTimer: hardTimerId
+            }
+          }
+        };
+      }),
+
+      // Handle 30s inactivity timeout
+      handleSoftInactivityTimeout: (questionId) => {
+        console.log(`Soft inactivity timeout (30s) for question ${questionId}`);
+        
+        const state = get();
+        
+        // Verify this question is still being tracked
+        if (!state.activeTimerQuestions.has(questionId)) {
           return;
         }
         
-        // Otherwise, generate for all questions
-        // Get all unique question IDs
-        const questionIds = [...new Set(
-          Object.values(state.segments).map(segment => segment.questionIdx)
-        )];
+        // Send stability check request
+        if (state.wsService) {
+          state.wsService.sendStabilityCheck(questionId);
+        }
+      },
+
+      // Handle 120s inactivity timeout
+      handleHardInactivityTimeout: (questionId) => {
+        console.log(`Hard inactivity timeout (120s) for question ${questionId}`);
         
-        // For each question, send a separate request
-        questionIds.forEach(qId => {
-          state.generateRequirements(qId);
+        const state = get();
+        
+        // Verify this question is still being tracked
+        if (!state.activeTimerQuestions.has(questionId)) {
+          return;
+        }
+        
+        // Trigger requirement generation with timeout as trigger
+        state.generateRequirements(questionId, 'timeout');
+      },
+
+      // Handle returned backend stability response
+      handleStabilityResponse: (questionId, isStable) => {
+        console.log(`Stability response for question ${questionId}: ${isStable ? 'stable' : 'not stable'}`);
+        
+        const state = get();
+    
+        // Only proceed if we're still tracking this question AND
+        // the timer has been running for at least 30s (not reset)
+        if (state.activeTimerQuestions.has(questionId) && isStable) {
+            // Check if timer has been running for at least 30s
+            const lastActivity = state.lastActivityTime[questionId] || 0;
+            const timeElapsed = Date.now() - lastActivity;
+            
+            if (timeElapsed >= state.softInactivityThreshold) {
+                // Trigger requirement generation with stability as trigger
+                state.generateRequirements(questionId, 'stability');
+            } else {
+                console.log(`Ignoring stability response - timer was reset`);
+
+            }
+        }
+        // If not stable, do nothing - keep tracking
+      },
+
+      // Requirement generated in three cases: manual, timeout, stability
+      generateRequirements: (questionId, triggerMode) => {
+        const state = get();
+        // Check if generation is already pending for this question
+        if (state.pendingRequirementGeneration[questionId]) {
+          console.log(`Requirements generation already pending for question ${questionId}, skipping`);
+          return;
+        }
+        if (!state.questionHasSegmentsNeedingGeneration(questionId)) {
+          console.log('No segments need generation for this question, skipping');
+          return;
+        }
+        console.log(`Generating requirements for question ${questionId}, mode: ${triggerMode}`);
+        
+        // Get segment UUIDs and full text for this question that need generation
+        const segmentsToGenerate = Object.entries(state.segments)
+          .filter(([uuid, segment]) => {
+            return segment.questionIdx === questionId && 
+                  state.segmentRequirementState[uuid] === 'needs_generation';
+          })
+          .map(([uuid, segment]) => ({
+            uuid: uuid,
+            text: segment.text || ""  // Include the full segment text
+          }));
+        
+        // Mark segments as generating
+        state.markSegmentsAsGenerating(segmentsToGenerate.map(s => s.uuid));
+        
+        // Clear timers but keep activetimer state on
+        if (state.inactivityTimers[questionId]) {
+          if (state.inactivityTimers[questionId].softTimer) {
+            clearTimeout(state.inactivityTimers[questionId].softTimer);
+          }
+          if (state.inactivityTimers[questionId].hardTimer) {
+            clearTimeout(state.inactivityTimers[questionId].hardTimer);
+          }
+        }
+        
+        // Send message to backend with full segment objects
+        if (state.wsService) {
+          state.wsService.sendGenerateRequirements(questionId, segmentsToGenerate, triggerMode);
+        }
+        
+        // Mark question as having pending requirement generation
+        set(state => ({
+          pendingRequirementGeneration: {
+            ...state.pendingRequirementGeneration,
+            [questionId]: true
+          }
+        }));
+      },
+
+      handleManualGenerateRequirements: (questionId) => {
+        const state = get();
+        
+        // Trigger requirement generation with manual as trigger
+        state.generateRequirements(questionId, 'manual');
+      },
+
+      // Handle requirement generation complete
+      handleRequirementGenerationComplete: (questionId, requirements) => set(state => {
+        console.log(`Requirement generation complete for question ${questionId}`);
+        
+        // Get all segments for this question that were in 'generating' state
+        const questionSegments = Object.entries(state.segments)
+          .filter(([uuid, segment]) => 
+            segment.questionIdx === questionId && 
+            state.segmentRequirementState[uuid] === 'generating'
+          )
+          .map(([uuid]) => uuid);
+        
+        // Mark all segments as 'no_need_generation'
+        const updatedStates = { ...state.segmentRequirementState };
+        questionSegments.forEach(uuid => {
+          updatedStates[uuid] = 'no_need_generation';
+        });
+        
+        // Add unique IDs to requirements if not present
+        const requirementsWithIds = requirements.map(req => ({
+          ...req,
+          id: req.id || `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        }));
+        
+        // Initialize requirement states
+        const newRequirementStates = { ...state.requirementStates };
+        requirementsWithIds.forEach(req => {
+          newRequirementStates[req.id] = 'pending';
+        });
+        
+        // Remove pending flag
+        const { [questionId]: _, ...remainingPending } = state.pendingRequirementGeneration;
+        
+        // NOW stop monitoring this question
+        state.stopInactivityMonitor(questionId);
+
+        // APPEND new requirements instead of replacing
+        const existingRequirements = state.requirements[questionId] || [];
+        
+        return {
+          segmentRequirementState: updatedStates,
+          pendingRequirementGeneration: remainingPending,
+          requirements: {
+            ...state.requirements,
+            [questionId]: [...existingRequirements, ...requirementsWithIds]
+          },
+          requirementStates: newRequirementStates
+        };
+      }),
+
+      // Stop inactivity monitoring for a question
+      stopInactivityMonitor: (questionId) => set(state => {
+        console.log(`Stopping inactivity monitor for question ${questionId}`);
+
+        // Update active timer questions set
+        const newActiveTimers = new Set(state.activeTimerQuestions);
+        newActiveTimers.delete(questionId);
+        
+        // Remove timers from state
+        const { [questionId]: _, ...remainingTimers } = state.inactivityTimers;
+        
+        return {
+          inactivityTimers: remainingTimers,
+          activeTimerQuestions: newActiveTimers
+        };
+      }),
+
+      // Method to mark one segment as needing generation
+      markSegmentAsNeedsGeneration: (uuid) => set(state => ({
+        segmentRequirementState: {
+          ...state.segmentRequirementState,
+          [uuid]: 'needs_generation'
+        }
+      })),
+
+      // Method to mark segments as generating
+      markSegmentsAsGenerating: (segmentUuids) => set(state => {
+        const updatedStates = { ...state.segmentRequirementState };
+        
+        segmentUuids.forEach(uuid => {
+          updatedStates[uuid] = 'generating';
+        });
+        
+        return {
+          segmentRequirementState: updatedStates
+        };
+      }),
+
+      // Check if a question has segments needing generation
+      questionHasSegmentsNeedingGeneration: (questionId) => {
+        const state = get();
+        
+        // Get segment UUIDs for this question
+        const questionSegmentUuids = Object.entries(state.segments)
+          .filter(([_, segment]) => segment.questionIdx === questionId)
+          .map(([uuid]) => uuid);
+        
+        // Check if any segment needs generation
+        return questionSegmentUuids.some(uuid => {
+          const reqState = state.segmentRequirementState[uuid];
+          return reqState === 'needs_generation';
         });
       },
 
-      // Add requirements from the server response
-      addRequirements: (requirements) => set(state => {
-        const newRequirements = requirements.map(req => {
-          // Check if this requirement already exists
-          const existingIndex = state.requirements.findIndex(r => 
-            r.id === req.id || 
-            (r.text === req.text && r.questionId === req.questionId)
-          );
-          
-          if (existingIndex >= 0) {
-            const existing = state.requirements[existingIndex];
-            
-            // If the existing one is validated or rejected, keep its status
-            if (existing.status === 'validated' || existing.status === 'rejected') {
-              return existing;
+      // Method to handle new edits during requirement generation
+      handleEditDuringGeneration: (questionId) => set(state => {
+         // Remove pending flag
+         const { [questionId]: _, ...remainingPending } = state.pendingRequirementGeneration;
+
+        // Get all segments for this question
+        const questionSegments = Object.entries(state.segments)
+          .filter(([_, segment]) => segment.questionIdx === questionId)
+          .map(([uuid]) => uuid);
+        
+        // Get segments currently in 'generating' state
+        const generatingSegments = questionSegments.filter(uuid => 
+          state.segmentRequirementState[uuid] === 'generating'
+        );
+        
+        // Reset all generating segments back to 'needs_generation'
+        const updatedStates = { ...state.segmentRequirementState };
+        generatingSegments.forEach(uuid => {
+          updatedStates[uuid] = 'needs_generation';
+        });
+        
+        // Send message to backend to discard results
+        if (state.wsService) {
+          state.wsService.sendDiscardRequirementGeneration(questionId);
+        }
+        
+        return {
+          segmentRequirementState: updatedStates,
+          pendingRequirementGeneration: remainingPending
+        };
+      }),
+
+      // Method to handle changes to a segment after requirement generated for it (in pending/validated mode)
+      handleSegmentChangeWithRequirements: (uuid) => {
+        // Get current state outside of the set function
+        const state = get();
+        const segment = state.segments[uuid];
+        const questionId = segment?.questionIdx;
+        console.log(`[handleSegmentChangeWithRequirements] Extracted questionId: ${questionId}`);
+        
+        // Find linked requirements
+        const linkedRequirements = [];
+        Object.entries(state.requirements).forEach(([qId, reqList]) => {
+          reqList.forEach(req => {
+            const reqState = state.requirementStates[req.id];
+            // Only include requirements that are pending or validated
+            if (req.segments && 
+                req.segments.includes(uuid) && 
+                (reqState === 'pending' || reqState === 'validated')) {
+              linkedRequirements.push(req);
             }
-            
-            // Otherwise, this is a replacement (probably for a stale one)
-            return {
-              ...req,
-              id: req.id || existing.id, // Keep existing ID if new one doesn't have one
-              history: [...(existing.history || []), {
-                text: existing.text,
-                timestamp: new Date().toISOString()
-              }]
-            };
+          });
+        });
+        console.log(`[handleSegmentChangeWithRequirements] Found ${linkedRequirements.length} linked requirements`);
+        
+        // All segments that need to be marked as needs_generation
+        const segmentsToUpdate = new Set();
+        segmentsToUpdate.add(uuid);
+        
+        // Add all segments from linked requirements
+        linkedRequirements.forEach(req => {
+          if (req.segments) {
+            req.segments.forEach(segUuid => segmentsToUpdate.add(segUuid));
           }
+        });
+        
+        // Update all states in a single operation
+        set(state => {
+          // Create updates for requirement states
+          const newRequirementStates = { ...state.requirementStates };
+          linkedRequirements.forEach(req => {
+            newRequirementStates[req.id] = 'stale';
+          });
           
-          // This is a completely new requirement
+          // Create updates for segment requirement states
+          const newSegmentStates = { ...state.segmentRequirementState };
+          segmentsToUpdate.forEach(segUuid => {
+            newSegmentStates[segUuid] = 'needs_generation';
+          });
+          console.log(`[handleSegmentChangeWithRequirements] Will update ${segmentsToUpdate.size} segments`);
+          
           return {
-            ...req,
-            status: 'pending',
-            history: [],
-            createdAt: new Date().toISOString()
+            requirementStates: newRequirementStates,
+            segmentRequirementState: newSegmentStates
           };
         });
         
-        // Filter out any stale or replaced requirements
-        const filteredExisting = state.requirements.filter(existing => {
-          return !newRequirements.some(newReq => 
-            newReq.id === existing.id || 
-            (newReq.text === existing.text && newReq.questionId === existing.questionId)
-          );
-        });
-        
-        return {
-          requirements: [...filteredExisting, ...newRequirements],
-          generatingRequirements: {
-            ...state.generatingRequirements,
-            [newRequirements[0]?.questionId]: false // Mark this question's generation as complete
+        // Start a timer is not already started
+        if (questionId !== undefined) {
+          const currentState = get();
+          if (!currentState.activeTimerQuestions.has(questionId)) {
+            currentState.startInactivityMonitor(questionId);
           }
-        };
-      }),
+        }
+      },
 
-      // Mark requirements as stale when linked segments change
-      markRequirementsStale: (segmentUuid) => set(state => {
-        const segment = state.segments[segmentUuid];
-        
-        if (!segment) return state;
-        
-        // Find requirements linked to this segment
-        return {
-          requirements: state.requirements.map(req => {
-            const isLinked = req.linkedSegments.includes(segment.segmentIdx) && 
-                            req.questionId === segment.questionIdx;
-            
-            if (isLinked && req.status === 'validated') {
-              return { ...req, status: 'stale' };
+      // Cleanup function for unmounting
+      cleanupInactivityTimers: (questionId = null) => set(state => {
+        if (questionId) {
+          // Clean up for specific question
+          if (state.inactivityTimers[questionId]) {
+            if (state.inactivityTimers[questionId].softTimer) {
+              clearTimeout(state.inactivityTimers[questionId].softTimer);
+            }
+            if (state.inactivityTimers[questionId].hardTimer) {
+              clearTimeout(state.inactivityTimers[questionId].hardTimer);
             }
             
-            return req;
-          })
+            const { [questionId]: _, ...remainingTimers } = state.inactivityTimers;
+            
+            // Update active timer questions set
+            const newActiveTimers = new Set(state.activeTimerQuestions);
+            newActiveTimers.delete(questionId);
+            
+            return {
+              inactivityTimers: remainingTimers,
+              activeTimerQuestions: newActiveTimers
+            };
+          }
+          return state;
+        } else {
+          // Clean up all timers
+          Object.values(state.inactivityTimers).forEach(timers => {
+            if (timers.softTimer) clearTimeout(timers.softTimer);
+            if (timers.hardTimer) clearTimeout(timers.hardTimer);
+          });
+          
+          return {
+            inactivityTimers: {},
+            activeTimerQuestions: new Set()
+          };
+        }
+      }),
+
+      // Requirement Panel Management
+      // Set requirement state (validate/reject)
+      setRequirementState: (requirementId, newState, rating = null) => set(state => {
+        // If rejecting or marking as stale, mark linked segments as needing generation again
+        if (newState === 'rejected') {
+          const requirement = Object.values(state.requirements)
+            .flat()
+            .find(req => req.id === requirementId);
+            
+            if (requirement && requirement.segments) {
+              requirement.segments.forEach(segmentUuid => {
+                state.markSegmentAsNeedsGeneration(segmentUuid);
+              });
+          }
+        }
+        
+        return {
+          requirementStates: {
+            ...state.requirementStates,
+            [requirementId]: newState
+          },
+          requirementRatings: rating ? {
+            ...state.requirementRatings,
+            [requirementId]: rating
+          } : state.requirementRatings
         };
       }),
 
-      // Track interaction with a segment
-      trackSegmentInteraction: (questionId, segmentId) => set(state => ({
-        lastInteractionTimes: {
-          ...state.lastInteractionTimes,
-          [questionId]: Date.now()
-        }
-      })),
+      // Get requirements for a question
+      getRequirementsByQuestion: (questionId) => {
+        const state = get();
+        return state.requirements[questionId] || [];
+      },
 
-      // Track when an intervention appears for a segment
-      trackInterventionAppearance: (questionId) => set(state => ({
-        lastInterventionTimes: {
-          ...state.lastInterventionTimes,
-          [questionId]: Date.now
-        }
-      })),
+      // Get requirement state by ID
+      getRequirementState: (requirementId) => {
+        const state = get();
+        return state.requirementStates[requirementId] || 'pending';
+      },
 
+      // Get requirement rating by ID
+      getRequirementRating: (requirementId) => {
+        const state = get();
+        return state.requirementRatings[requirementId] || null;
+      },
+
+      
       // Debug Helpers
       setDebugMode: (enabled) => set({ debugMode: enabled }),
       toggleDebugMode: () => set(state => ({ 

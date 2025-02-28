@@ -34,7 +34,7 @@ class APIConfig:
             raise ValueError("OPENAI_API_KEY not found in environment variables")
             
         # System Configuration
-        self.max_concurrent_requests = int(os.getenv('MAX_CONCURRENT_REQUESTS', '3'))
+        self.max_concurrent_requests = int(os.getenv('MAX_CONCURRENT_REQUESTS', '10'))
         self.max_retries = int(os.getenv('MAX_RETRIES', '3'))
         self.retry_delay = int(os.getenv('RETRY_DELAY', '1'))
         
@@ -54,9 +54,8 @@ class APIConfig:
         
         # Request Type Priorities (lower = higher priority)
         self.priorities = {
-            'chat': 1,      # Immediate response needed
-            'intervention': 2,  # Important but can wait slightly
-            'analysis': 3   # Background task
+            'analysis': 1,      # Immediate response needed
+            'requirement': 2   # Background task
         }
         
         self._initialized = True
