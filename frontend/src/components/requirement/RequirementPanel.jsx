@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSurveyStore } from '../../stores/useSurveyStore';
 import { ChevronDown, ChevronUp, X, Maximize, Minimize, Check, AlertCircle, AlertTriangle } from 'lucide-react';
-import Draggable from 'react-draggable'; // You'll need to install this
+import Draggable from 'react-draggable'; 
 
 const RequirementPanel = () => {
   const {
@@ -11,7 +11,8 @@ const RequirementPanel = () => {
     getRequirementRating,
     setRequirementState,
     // Count questions from the answers state
-    answers
+    answers,
+    generationErrors,
   } = useSurveyStore();
 
   // Panel state management
@@ -25,7 +26,7 @@ const RequirementPanel = () => {
   const [showHistoryForQuestion, setShowHistoryForQuestion] = useState({});
   const [hoveredRating, setHoveredRating] = useState(0);
   const [selectedRating, setSelectedRating] = useState(0);
-  
+
   // Get number of questions from answers state
   const questionCount = Object.keys(answers).length;
   const questionIds = Object.keys(answers).map(Number);
@@ -212,6 +213,32 @@ const RequirementPanel = () => {
                 
                 {expandedQuestions.has(questionId) && (
                   <div className="space-y-3 mt-2">
+                    {/* Show error message if generation failed */}
+                    {generationErrors && generationErrors[questionId] && (
+                      <div className="p-3 border border-red-200 bg-red-50 rounded text-sm mb-3">
+                        <div className="flex items-center text-red-600 mb-2">
+                          <AlertTriangle size={14} />
+                          <span className="ml-1 font-medium">Requirement Generation Failed</span>
+                        </div>
+                        <p className="mb-2 text-red-700">{generationErrors[questionId].error}</p>
+                        
+                        {generationErrors[questionId].details && (
+                          <details className="mb-2">
+                            <summary className="cursor-pointer text-red-500 text-xs">Show technical details</summary>
+                            <pre className="mt-1 p-2 bg-red-100 text-xs overflow-x-auto whitespace-pre-wrap text-red-800">
+                              {generationErrors[questionId].details}
+                            </pre>
+                          </details>
+                        )}
+                        
+                        <button
+                          onClick={() => useSurveyStore.getState().handleManualGenerateRequirements(questionId)}
+                          className="mt-1 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 flex items-center"
+                        >
+                          <span className="mr-1">↻</span> Retry Generation
+                        </button>
+                      </div>
+                    )}
                     {requirements[questionId]?.length > 0 ? (
                       <>
                         {/* Active requirements (pending or validated) */}

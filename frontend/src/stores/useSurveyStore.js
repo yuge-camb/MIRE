@@ -52,7 +52,8 @@ export const useSurveyStore = create(
       requirements: {}, // Organized by questionId: { [questionId]: [requirement objects] }
       requirementStates: {}, // Track status by requirementId: { [requirementId]: 'pending'|'validated'|'rejected' }
       requirementRatings: {}, // Store ratings: { [requirementId]: 1-5 }
-      
+      generationErrors: {}, // Store requirement generation errors by questionId
+
       // WebSocket Setup
       initializeWebSocket: () => {
         const wsService = new WebSocketService(get());
@@ -105,6 +106,7 @@ export const useSurveyStore = create(
         requirements: {}, 
         requirementStates: {},
         requirementRatings: {},
+        generationErrors: {},
       })),
       
       // Segment Management
@@ -195,8 +197,8 @@ export const useSurveyStore = create(
         const segment = state.segments[uuid];
         // Accepts optional newText for intervention updates, otherwise uses current segment text for direct editing case
         const textToAnalyze = newText !== undefined ? newText : segment?.text;
-        const lastAnalyzedText = isManualTrigger ? undefined : state.lastAnalyzedTexts[uuid];
-
+        const lastAnalyzedText = state.lastAnalyzedTexts[uuid];
+        console.log(`[analyzeSegmentIfNeeded] Current lastAnalyzedText: ${lastAnalyzedText}`);
 
         if (textToAnalyze?.length >= 5 && 
             (lastAnalyzedText === undefined || textToAnalyze !== lastAnalyzedText)) {
@@ -231,18 +233,22 @@ export const useSurveyStore = create(
             all_segments: state.segments  // Include all segments for consistency checks
           });
 
+          // Update lastAnalyzedText when either:
+          // 1. Automatic analysis is happening (intervention mode is 'on')
+          // 2. Manual analysis is triggered (isManualTrigger is true)
+          const shouldUpdateLastAnalyzedText = state.interventionMode === 'on' || isManualTrigger;
+          
           return {
             analysisStatus: {
               ...state.analysisStatus,
               [uuid]: 'pending'
             },
-            lastAnalyzedTexts: {
+            lastAnalyzedTexts: shouldUpdateLastAnalyzedText ? {
               ...state.lastAnalyzedTexts,
               [uuid]: textToAnalyze
-            }
+            } : state.lastAnalyzedTexts
           };
         }
-
         return null;
       },
 
@@ -757,6 +763,18 @@ export const useSurveyStore = create(
         interventionMode: state.interventionMode === 'on' ? 'off' : 'on' 
       })),
 
+      // Manual analysis trigger when intervention mode is off
+      triggerManualAnalysis: (uuid) => set(state => {
+        const updates = state.analyzeSegmentIfNeeded(uuid, undefined, true);
+        
+        if (updates) {
+          console.log(`Manual analysis triggered for segment ${uuid}`);
+          return updates; 
+        }
+        console.log(`Analysis has been made for the segment content`);
+        return {};
+      }),
+
       // Requirement Generation Methods
       // For starting the inactivity timer (only happens with first segment update for a question with segments needing generation)
       startTimerIfNeeded: (questionId) => {
@@ -1021,6 +1039,10 @@ export const useSurveyStore = create(
         // Remove pending flag
         const { [questionId]: _, ...remainingPending } = state.pendingRequirementGeneration;
         
+          // Clear any existing generation errors for this question
+        const updatedGenerationErrors = { ...state.generationErrors };
+        delete updatedGenerationErrors[questionId];
+
         // NOW stop monitoring this question
         state.stopInactivityMonitor(questionId);
 
@@ -1034,7 +1056,47 @@ export const useSurveyStore = create(
             ...state.requirements,
             [questionId]: [...existingRequirements, ...requirementsWithIds]
           },
-          requirementStates: newRequirementStates
+          requirementStates: newRequirementStates,
+          generationErrors: updatedGenerationErrors
+        };
+      }),
+
+      // Method to handle requirement generation failure
+      handleRequirementGenerationFailed: (questionId, error, details = null) => set(state => {
+        console.error(`Requirement generation failed for question ${questionId}: ${error}`, details);
+        
+        // Get all segments for this question that were in 'generating' state
+        const questionSegments = Object.entries(state.segments)
+          .filter(([uuid, segment]) => 
+            segment.questionIdx === questionId && 
+            state.segmentRequirementState[uuid] === 'generating'
+          )
+          .map(([uuid]) => uuid);
+        
+        // Mark all segments as 'needs_generation' so user can retry
+        const updatedStates = { ...state.segmentRequirementState };
+        questionSegments.forEach(uuid => {
+          updatedStates[uuid] = 'needs_generation';
+        });
+        
+        // Remove pending flag
+        const { [questionId]: _, ...remainingPending } = state.pendingRequirementGeneration;
+        
+        // Stop monitoring this question
+        state.stopInactivityMonitor(questionId);
+        
+        return {
+          segmentRequirementState: updatedStates,
+          pendingRequirementGeneration: remainingPending,
+          // Store the error for display
+          generationErrors: {
+            ...state.generationErrors,
+            [questionId]: {
+              error,
+              details,
+              timestamp: Date.now()
+            }
+          }
         };
       }),
 
@@ -1229,7 +1291,7 @@ export const useSurveyStore = create(
       // Requirement Panel Management
       // Set requirement state (validate/reject)
       setRequirementState: (requirementId, newState, rating = null) => set(state => {
-        // If rejecting or marking as stale, mark linked segments as needing generation again
+        // If rejecting, mark linked segments as needing generation again
         if (newState === 'rejected') {
           const requirement = Object.values(state.requirements)
             .flat()

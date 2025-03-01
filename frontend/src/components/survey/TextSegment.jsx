@@ -8,12 +8,13 @@ const TextSegment = ({ questionId, segmentId }) => {
     answers,
     segments,
     setAnswer,
+    setState,
     setActiveEditingSegment,
     setSegmentEditStart,
     updateSegmentTiming,
     interventions,
     getInterventionDisplayMode,
-    analyzeSegmentIfNeeded,
+    triggerManualAnalysis,
     interventionMode,
     markSegmentAsNeedsGeneration,
     resetTimerIfActive
@@ -40,12 +41,6 @@ const TextSegment = ({ questionId, segmentId }) => {
   const currentSegmentIdx = segments[uuid]?.segmentIdx ?? segmentId;
   const text = answers[questionId]?.[segmentId] || '';
 
-  // Add manual analysis handler
-  const triggerManualAnalysis = () => {
-    analyzeSegmentIfNeeded(uuid, undefined, true); // Pass isManualTrigger as true
-    console.log(`Manual analysis triggered for segment ${uuid}`);
-  };
-
   // Get inline interventions
   const inlineInterventions = interventions.filter(int => 
     int && 
@@ -56,6 +51,9 @@ const TextSegment = ({ questionId, segmentId }) => {
     getInterventionDisplayMode(int) === 'inline'
   );
   
+  const handleManualAnalysis = () => {
+    triggerManualAnalysis(uuid);
+  };
 
   // Create display text with highlights
   const displayText = () => {
@@ -65,10 +63,41 @@ const TextSegment = ({ questionId, segmentId }) => {
       const triggerPhrase = int.trigger_phrase;
       result = result.replace(
         triggerPhrase,
-        `<span class="bg-yellow-100 bg-opacity-70 border-b-2 border-yellow-300 cursor-pointer relative z-10 pointer-events-auto" data-intervention-id="${int.id}">${triggerPhrase}</span>`
+         `<span class="bg-yellow-100 bg-opacity-70 border-b-2 border-yellow-300 cursor-pointer relative z-10 pointer-events-auto text-black" data-intervention-id="${int.id}">${triggerPhrase}</span>`
       );
     });
     return result;
+  };
+
+  const containerRef = useRef(null);
+  const textareaRef = useRef(null);
+  const overlayRef = useRef(null);
+
+  // Adjust height function
+  const adjustHeightIfNeeded = () => {
+    if (!textareaRef.current || !containerRef.current) return;
+    
+    // Check if content exceeds initial height
+    if (textareaRef.current.scrollHeight > textareaRef.current.clientHeight) {
+      // Set container height with a bit of extra padding
+      containerRef.current.style.height = (textareaRef.current.scrollHeight + 2) + 'px';
+
+      // Sync scroll position after height adjustment
+      if (overlayRef.current) {
+        overlayRef.current.scrollTop = textareaRef.current.scrollTop;
+      }
+    }
+  };
+
+  // Effect for text changes
+  useEffect(() => {
+    adjustHeightIfNeeded();
+  }, [text]);
+
+  const syncScroll = (e) => {
+    if (overlayRef.current) {
+      overlayRef.current.scrollTop = e.target.scrollTop;
+    }
   };
 
   const handleTextChange = (e) => {
@@ -96,6 +125,27 @@ const TextSegment = ({ questionId, segmentId }) => {
     }
   };
 
+  useEffect(() => {
+    // Create ResizeObserver to watch the container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      if (textareaRef.current && overlayRef.current) {
+        // Make sure overlay size matches textarea after resize
+        overlayRef.current.style.height = `${textareaRef.current.clientHeight}px`;
+        overlayRef.current.style.width = `${textareaRef.current.clientWidth}px`;
+        overlayRef.current.scrollTop = textareaRef.current.scrollTop;
+      }
+    });
+    
+    // Start observing if container exists
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    // Clean up
+    return () => resizeObserver.disconnect();
+  }, []);
+
+
   // Close popover when clicking outside (not dismissed)
   useEffect(() => {
     if (openInterventionId) {
@@ -122,20 +172,26 @@ const TextSegment = ({ questionId, segmentId }) => {
   return (
     <div className="flex gap-4">
       <div className="flex-grow relative">
-      <div className="w-full border rounded min-h-[100px] resize-y overflow-hidden relative p-0 m-0">
+      <div ref={containerRef} className="w-full border rounded min-h-[100px] resize-y overflow-hidden relative p-0 m-0">
         <div
+          ref={overlayRef}
           contentEditable
           dangerouslySetInnerHTML={{ __html: displayText() }}
           onClick={handleHighlightClick}
-          className="w-full h-full p-3 absolute top-0 left-0"
+          className="w-full h-full p-3 absolute top-0 left-0 text-transparent overflow-auto"
         />
         <textarea
+          ref={textareaRef}
           value={text}
-          onChange={handleTextChange}
-          onBlur={handleBlur}    
-          onFocus={handleFocus} 
+          onChange={(e) => {
+            handleTextChange(e);
+            adjustHeightIfNeeded();
+          }}
+          onScroll={syncScroll} 
+          onBlur={handleBlur}
+          onFocus={handleFocus}
           data-segment-id={uuid} 
-          className="w-full h-full p-3 absolute top-0 left-0 opacity-50 resize-none"
+          className="w-full h-full p-3 absolute top-0 left-0 resize-none"
           placeholder="Enter your response..."
         />
 
@@ -161,7 +217,7 @@ const TextSegment = ({ questionId, segmentId }) => {
       {/* Add manual analysis button when intervention mode is off */}
       {interventionMode === 'off' && (
       <button
-        onClick={triggerManualAnalysis}
+        onClick={handleManualAnalysis}
         className="h-8 px-2 bg-blue-100 hover:bg-blue-200 rounded flex items-center gap-1 text-sm"
         title="Check text for clarity and consistency"
       >

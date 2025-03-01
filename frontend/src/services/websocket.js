@@ -119,6 +119,10 @@ export class WebSocketService {
           this.store.handleRequirementGenerationComplete(data.questionId, data.requirements);
           break;
         
+        case 'requirement_generation_failed':
+          this.store.handleRequirementGenerationFailed(data.questionId, data.error, data.details);
+          break;
+        
         case 'intervention_feedback_received':
           console.log('Feedback received confirmation:', data);
           break;
