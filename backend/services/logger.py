@@ -25,15 +25,31 @@ class Logger:
         self.logger.info(f"Created session directory: {self.log_dir}")
 
     def log(self, data: dict):
-     # Handle all UUID-based logs
+        # Add debug logging at start of method
+        logging.debug(f"Logger received data: {json.dumps(data)}")
+        
+        # Handle all UUID-based logs
         if data["type"] in ["segment_timing", "segment_edit", "intervention_response"]:
+            logging.debug(f"Processing UUID-based log for type: {data['type']}")
             filename = f"{data['type']}s.json"  
             filepath = os.path.join(self.log_dir, filename)
             self._log_to_file_by_uuid(filepath, data)
         elif data["type"] in["activity_timeline", "intervention_feedback" , "ambiguity_analysis", "consistency_analysis"] :
+            logging.debug(f"Processing standard log for type: {data['type']}")
             filename = f"{data['type']}.json"  
             filepath = os.path.join(self.log_dir, filename)
             self._log_to_file(filepath, data)
+        # Handle requirement-related logs by question_id
+        elif data["type"] in ["segment_similarity", "stability_check", "requirement_generation"]:
+            logging.debug(f"Processing question_id based log for type: {data['type']}")
+            # Get question_id (could be either question_id or question_idx)
+            question_id = data.get("question_idx")
+            filename = f"{data['type']}.json"
+            filepath = os.path.join(self.log_dir, filename)
+            logging.debug(f"Writing to file: {filepath}")
+            self._log_to_file_by_question_id(filepath, data, question_id)
+            logging.info(f"Logged {data['type']} data for question_id: {question_id}")
+            
         elif data["type"] == "survey_submission":
             # Create a new file for final survey state
             submission_file = os.path.join(self.log_dir, "survey_submission.json")
@@ -65,6 +81,30 @@ class Logger:
                 
         except Exception as e:
             self.logger.error(f"Error logging to file {filepath}: {str(e)}")
+    
+    def _log_to_file_by_question_id(self, filepath: str, data: dict, question_id):
+        try:
+            logging.debug(f"Starting _log_to_file_by_question_id for {filepath}")
+            # Initialize or load existing data
+            if os.path.exists(filepath):
+                with open(filepath, 'r') as f:
+                    file_data = json.load(f)
+                   
+            else:
+                file_data = {}
+                logging.debug("Created new empty data structure")
+            
+            question_id_str = str(question_id)
+            if question_id_str not in file_data:
+                file_data[question_id_str] = []
+            
+            file_data[question_id_str].append(data)
+            
+            with open(filepath, 'w') as f:
+                json.dump(file_data, f, indent=2)
+                
+        except Exception as e:
+            self.logger.error(f"Error logging to file by question_id {filepath}: {str(e)}")
 
     def _log_to_file(self, filepath: str, data: dict):
         try:

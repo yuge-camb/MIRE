@@ -6,6 +6,7 @@ import json
 import time
 import os
 import asyncio
+from datetime import datetime
 
 class RequirementService:
     """
@@ -86,13 +87,18 @@ class RequirementService:
             
             # Log similarity score
             self.logger.log({
-                "type": "segment_similarity",
-                "uuid": uuid,
+                "type": "segment_similarity", 
                 "question_idx": question_idx,
-                "similarity_score": similarity_score,
-                "timestamp": current_time
+                "data": {
+                    "question_idx": question_idx,
+                    "segment_uuid": uuid,
+                    "similarity_score": similarity_score,
+                    "text": text,
+                    "previous_text": previous_text,
+                    "timestamp": datetime.now().isoformat()
+                }
             })
-        
+
         # Update latest text for this segment
         self.latest_segment_texts[uuid] = {
             "text": text,
@@ -170,10 +176,13 @@ class RequirementService:
         # Log stability check
         self.logger.log({
             "type": "stability_check",
-            "question_id": question_idx,
-            "is_stable": all_stable,
-            "segment_status": segment_status,
-            "timestamp": time.time()
+            "question_idx": question_idx,
+            "data": {
+                "question_idx": question_idx,
+                "is_stable": all_stable,
+                "segment_status": segment_status,
+                "timestamp": time.time()
+                }
         })
 
     def _get_segment_stability(self, question_idx: int, uuid: str) -> Dict:
@@ -266,11 +275,13 @@ class RequirementService:
             # Log generation results
             self.logger.log({
                 "type": "requirement_generation",
-                "question_id": question_id,
-                "trigger_mode": trigger_mode,
-                "requirement": requirements,
-                "segment": valid_segments,
-                "timestamp": time.time()
+                "question_idx": question_id,
+                 "data": {
+                    "trigger_mode": trigger_mode,
+                    "requirement": requirements,
+                    "segment": valid_segments,
+                    "timestamp": datetime.now().isoformat()
+                }
             })
             
             # Remove all state data for this question after completion
@@ -379,9 +390,16 @@ class RequirementService:
         except json.JSONDecodeError as e:
             logging.error(f"❌ [RequirementService] Failed to parse LLM response as JSON: {e}")
             logging.error(f"Raw response: {response['choices'][0].message.content}")
+            logging.info(f"requirement_text {requirement_text}")
+            error_message = "Failed to parse LLM response as JSON"
+            await self._send_generation_failed(question_id, requirement_text, error_message)
             raise Exception("Failed to parse LLM response as JSON")
+
         except ValueError as e:
             logging.error(f"❌ [RequirementService] Invalid LLM response format: {e}")
+            logging.info(f"requirement_text {requirement_text}")
+            error_message = "Invalid LLM response format"
+            await self._send_generation_failed(question_id, error_message, str(e))
             raise Exception(f"Invalid LLM response format: {e}")
 
     def _build_requirement_prompt(self, question_id: int, question_text: str, segment_texts: Dict[str, str]):
@@ -428,3 +446,17 @@ class RequirementService:
         })
         
         logging.info(f"✅ [RequirementService] Sent {len(requirements)} requirements for question {question_id}")
+    
+    async def _send_generation_failed(self, question_id: int, error_message: str, details: str = None):
+        """
+        Send generation failure message to frontend.
+        """
+        await self.ws.send_json({
+            "type": "requirement_generation_failed",
+            "questionId": question_id,
+            "error": error_message,
+            "details": details,
+            "timestamp": time.time()
+        })
+        
+        logging.error(f"❌ [RequirementService] Requirement generation failed for question {question_id}: {error_message}")
