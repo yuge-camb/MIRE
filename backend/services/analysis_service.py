@@ -31,6 +31,18 @@ class AnalysisService:
         self.active_interventions = {}
         self.segments = {}
         self.analysis_results = {}
+    
+    async def reset_state(self):
+        """Reset all session-specific state"""
+        # Reset this service's state
+        self.analysis_status = {}
+        self.active_interventions = {}
+        self.segments = {}
+        self.analysis_results = {}
+        
+        # Reset child services' state and reload their contexts
+        await self.detector.reset_state()
+        await self.consistency.reset_state()
 
     async def _cancel_existing_analysis(self, uuid):
         """Internal method to handle cancellation logic

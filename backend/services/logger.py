@@ -34,7 +34,7 @@ class Logger:
             filename = f"{data['type']}s.json"  
             filepath = os.path.join(self.log_dir, filename)
             self._log_to_file_by_uuid(filepath, data)
-        elif data["type"] in["activity_timeline", "intervention_feedback" , "ambiguity_analysis", "consistency_analysis"] :
+        elif data["type"] in["session_start","activity_timeline", "intervention_feedback" , "ambiguity_analysis", "consistency_analysis"] :
             logging.debug(f"Processing standard log for type: {data['type']}")
             filename = f"{data['type']}.json"  
             filepath = os.path.join(self.log_dir, filename)

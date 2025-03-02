@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 import logging
 from services.llm_manager import LLMManager
+from . import context_store
 import numpy as np
 import json
 import time
@@ -29,28 +30,16 @@ class RequirementService:
         # {question_id: { "timestamp": timestamp}, "discarded": True/False,  "segments": [s["uuid"] for s in segments],}
         self.requirements_state = {}
 
-        # Load questions from JSON file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        questions_path = os.path.join(current_dir, 'questions_stage1.json')
-        try:
-            with open(questions_path, 'r') as f:
-                json_data = json.load(f)
-                self.questions = json_data.get('questions', {})
-                self.system_context = json_data.get('system_context', {
-                    'name': 'System',  # default fallback
-                    'description': '',
-                    'type': 'Web Application'
-                })
-
-        except Exception as e:
-            logging.error(f"❌ [RequirementService] Error loading questions: {e}")
-            self.questions = {}
+        # Load questions and system context from the store
+        self.questions, self.system_context = context_store.load_context()
     
     async def reset_state(self):
         """Reset all session-specific state"""
         self.segment_similarity_history.clear()
         self.latest_segment_texts.clear()
         self.requirements_state.clear()
+        self.questions, self.system_context = context_store.load_context()
+        logging.info (f"Questions: {self.questions}, System Context: {self.system_context}")
 
     async def handle_segment_update(self, uuid: str, text: str, question_idx: int, segment_idx: int):
         """

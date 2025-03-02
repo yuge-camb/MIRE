@@ -215,11 +215,13 @@ export class WebSocketService {
     });
   }
 
-  sendSessionStart(sessionId) {
+  sendSessionStart(sessionId, context, initiativeMode) {
     this.sessionId = sessionId;  // Store session ID
     this.sendMessage({
         type: 'session_start',
         sessionId: sessionId,
+        context: context,
+        initiativeMode: initiativeMode,
         timestamp: new Date().toISOString()
     });
 }

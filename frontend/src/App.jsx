@@ -3,7 +3,7 @@ import { useSurveyStore } from './stores/useSurveyStore';
 import SurveyContainer from './components/survey/SurveyContainer';
 import ChatInterface from './components/chat/ChatInterface';
 import DebugPanel from './components/debug/DebugPanel';
-import FeedbackManager from './components/feedback/FeedbackManager';
+// import FeedbackManager from './components/feedback/FeedbackManager';
 import ToolBox from './components/survey/SurveyTool';
 import RequirementsPanel from './components/requirement/RequirementPanel';
 

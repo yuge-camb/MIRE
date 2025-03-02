@@ -19,9 +19,9 @@ const RequirementPanel = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState(new Set());
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  // const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [activeRequirement, setActiveRequirement] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('');
+  // const [rejectionReason, setRejectionReason] = useState('');
   const [panelPosition, setPanelPosition] = useState({ x: 0, y: 0 });
   const [showHistoryForQuestion, setShowHistoryForQuestion] = useState({});
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -59,18 +59,34 @@ const RequirementPanel = () => {
     });
   }, [requirements]);
 
+// Auto-close rating modal if requirement becomes stale
+useEffect(() => {
+  // Only check if we have an active requirement and the rating modal is open
+  if (showRatingModal && activeRequirement) {
+    // Get the current state of the active requirement
+    const currentState = getRequirementState(activeRequirement.id);
+    
+    // If the requirement has become stale, close the rating modal
+    if (currentState === 'stale') {
+      setShowRatingModal(false);
+      setSelectedRating(0);
+      setHoveredRating(0);
+    }
+  }
+}, [activeRequirement, showRatingModal, getRequirementState, useSurveyStore(state => state.requirementStates)]);
+
   // Handle validate action
   const handleValidate = (requirement) => {
     setActiveRequirement(requirement);
     setShowRatingModal(true);
   };
 
-  // Handle reject action
-  const handleReject = (requirement) => {
-    setActiveRequirement(requirement);
-    setRejectionReason('');
-    setShowRejectionModal(true);
-  };
+  // // Handle reject action
+  // const handleReject = (requirement) => {
+  //   setActiveRequirement(requirement);
+  //   setRejectionReason('');
+  //   setShowRejectionModal(true);
+  // };
 
   // Submit rating
   const handleRateRequirement = (rating) => {
@@ -80,11 +96,11 @@ const RequirementPanel = () => {
     setHoveredRating(0);
   };
 
-  // Submit rejection
-  const handleSubmitRejection = () => {
-    setRequirementState(activeRequirement.id, 'rejected');
-    setShowRejectionModal(false);
-  };
+  // // Submit rejection
+  // const handleSubmitRejection = () => {
+  //   setRequirementState(activeRequirement.id, 'rejected');
+  //   setShowRejectionModal(false);
+  // };
 
   // Scroll to relevant segment
   const scrollToSegment = (segmentUuid) => {
@@ -117,9 +133,9 @@ const RequirementPanel = () => {
     
     switch(status) {
       case 'validated':
-        return <div className="flex items-center text-green-600"><Check size={14} /><span className="ml-1 text-xs">Validated</span></div>;
-      case 'rejected':
-        return <div className="flex items-center text-red-600"><X size={14} /><span className="ml-1 text-xs">Rejected</span></div>;
+        return <div className="flex items-center text-blue-600"><Check size={14} /><span className="ml-1 text-xs">Rated</span></div>;
+      // case 'rejected':
+      //   return <div className="flex items-center text-red-600"><X size={14} /><span className="ml-1 text-xs">Rejected</span></div>;
       case 'stale':
         return <div className="flex items-center text-amber-500"><AlertTriangle size={14} /><span className="ml-1 text-xs">Stale</span></div>;
       default:
@@ -133,9 +149,9 @@ const RequirementPanel = () => {
       
       switch(status) {
         case 'validated':
-          return 'border-green-200 bg-green-50';
-        case 'rejected':
-          return 'border-red-200 bg-red-50';
+          return 'border-blue-200 bg-blue-50';
+        // case 'rejected':
+        //   return 'border-red-200 bg-red-50';
         case 'stale':
           return 'border-amber-200 bg-amber-50'; // Amber/yellow for stale requirements
         default:
@@ -245,7 +261,8 @@ const RequirementPanel = () => {
                         {requirements[questionId]
                           .filter(req => {
                             const state = getRequirementState(req.id);
-                            return state !== 'rejected' && state !== 'stale';
+                            return state !== 'stale';
+                            // return state !== 'rejected' && state !== 'stale';
                           })
                           .map((requirement) => (
                             <div 
@@ -260,18 +277,18 @@ const RequirementPanel = () => {
                                     <>
                                       <button 
                                         onClick={() => handleValidate(requirement)}
-                                        className="p-1 rounded hover:bg-green-100"
-                                        title="Validate"
+                                        className="px-2 py-1 rounded hover:bg-blue-100 flex items-center"
+                                        title="Rate this requirement"
                                       >
-                                        <Check size={14} className="text-green-600" />
+                                        <Check size={14} className="text-blue-600 mr-1" />
                                       </button>
-                                      <button 
+                                      {/* <button 
                                         onClick={() => handleReject(requirement)}
                                         className="p-1 rounded hover:bg-red-100"
                                         title="Reject"
                                       >
                                         <X size={14} className="text-red-600" />
-                                      </button>
+                                      </button> */}
                                     </>
                                   )}
                                 </div>
@@ -307,7 +324,8 @@ const RequirementPanel = () => {
                           {/* Rejected/Stale requirements history section */}
                           {requirements[questionId].some(req => {
                             const state = getRequirementState(req.id);
-                            return state === 'rejected' || state === 'stale';
+                            return state === 'stale';
+                            // return state === 'rejected' || state === 'stale';
                           }) && (
                             <div className="mt-4">
                               <div 
@@ -334,10 +352,11 @@ const RequirementPanel = () => {
                                   {requirements[questionId]
                                     .filter(req => {
                                       const state = getRequirementState(req.id);
-                                      return state === 'rejected' || state === 'stale';
+                                      return state === 'stale';
+                                      // return state === 'rejected' || state === 'stale';
                                     })
                                     .map((requirement) => {
-                                      const isRejected = getRequirementState(requirement.id) === 'rejected';
+                                      // const isRejected = getRequirementState(requirement.id) === 'rejected';
                                       return (
                                         <div 
                                           key={requirement.id} 
@@ -346,8 +365,9 @@ const RequirementPanel = () => {
                                           <div className="flex justify-between items-center mb-2">
                                             {getStatusIndicator(requirement.id)}
                                           </div>
-                                          <p className={`mb-2 ${isRejected ? 'line-through' : ''}`}>{requirement.requirement}</p>
-                                          
+                                          {/* <p className={`mb-2 ${isRejected ? 'line-through' : ''}`}>{requirement.requirement}</p> */}
+                                          <p className="mb-2">{requirement.requirement}</p>
+
                                           <div className="flex justify-between items-center">
                                             <div className="flex gap-1">
                                               {requirement.segments.map((segmentUuid) => {
@@ -419,7 +439,32 @@ const RequirementPanel = () => {
                   </button>
                 ))}
               </div>
-              
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  Linked Segment(s):
+                </label>
+                <div className="flex gap-2 mb-3">
+                  {activeRequirement?.segments.map((segmentUuid) => {
+                    const segment = useSurveyStore.getState().segments[segmentUuid];
+                    const segmentIdx = segment ? segment.segmentIdx + 1 : '?';
+                    const questionId = segment ? segment.questionId + 1 : '?';
+                    
+                    return (
+                      <button 
+                      key={segmentUuid}
+                      onClick={() => scrollToSegment(segmentUuid)}
+                      className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs flex items-center gap-1 transition-colors"
+                      title={`Scroll to segment ${segmentIdx}`}
+                      >
+                      <span>Segment {segmentIdx}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-4 text-left">
+                If this requirement doesn't effectively express the system that answer to your need, consider editing the linked segment(s) to improve clarity and consistency.
+              </p>
               <div className="flex justify-end">
                 <button 
                   onClick={() => {
@@ -437,7 +482,7 @@ const RequirementPanel = () => {
         )}
 
         {/* Rejection Modal */}
-        {showRejectionModal && (
+        {/* {showRejectionModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
               <h3 className="text-lg font-medium mb-4">Reject this requirement</h3>
@@ -496,7 +541,7 @@ const RequirementPanel = () => {
               </div>
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </Draggable>
   );

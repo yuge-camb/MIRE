@@ -4,6 +4,7 @@ import uuid
 import json
 import logging
 import os
+from . import context_store
 
 @dataclass
 class AmbiguityIntervention:
@@ -20,11 +21,19 @@ class InterventionService:
         ambiguity_type_path = os.path.join(current_dir, 'ambiguity_types.json')
         with open(ambiguity_type_path, 'r') as f:
             self.ambiguity_types = json.load(f)
+        # Load questions and system context from the store
+        self.questions, self.system_context = context_store.load_context()
         self.interpretation_prompt = self._build_interpretation_prompt()
+        
+    async def reset_state(self):
+        """Reset all session-specific state"""
+        self.questions, self.system_context = context_store.load_context()
+        self.interpretation_prompt = self._build_interpretation_prompt()
+        logging.info (f"Questions: {self.questions}, System Context: {self.system_context}")
+        logging.info (f"interpretation_prompt: {self.interpretation_prompt}")
 
     async def generate_ambiguity_intervention(self, text: str, intervention_type: str, analysis_prompt: str) -> AmbiguityIntervention:
-        """Generate appropriate intervention based on confidence"""
-        # Get interpretations from LLM
+        
         interp_result = await self.llm.submit_request_async(
                     messages=[
                         {"role": "system", "content": self.interpretation_prompt},
@@ -49,9 +58,9 @@ class InterventionService:
 
     def _build_interpretation_prompt(self) -> str:
         """Build interpretation prompt"""
-        # Previous interpretation prompt building code remains the same
+        system_name = self.system_context.get('name')
         prompt_parts = [
-            """You are an expert requirement analyst analysing raw responses from a requirement elicitation survey for ambiguity in a university engineering module review system context.
+            f"""You are an expert requirement analyst analysing raw responses from a requirement elicitation survey for ambiguity in a {system_name} context.
             
             You will receive:
             1. The survey question being answered

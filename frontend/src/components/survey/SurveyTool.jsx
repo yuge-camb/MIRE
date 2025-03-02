@@ -9,11 +9,16 @@ const ToolBox = () => {
     setGlobalDisplayMode,
     showInstructions,
     toggleInstructions,
-    interventionMode,  // Add this
-    toggleInterventionMode  // Add this
+    interventionMode,  
+    toggleInterventionMode,
+    initiativeMode
   } = useSurveyStore();
 
   const cycleDisplayMode = () => {
+    // Check if in fixed mode before allowing display mode changes
+    if (initiativeMode === "fixed") return; // Don't allow changes in fixed mode
+    
+    // Normal cycling logic for mixed mode
     const modes = ['panel', 'inline', 'default'];
     const currentIndex = modes.indexOf(globalDisplayMode);
     const nextMode = modes[(currentIndex + 1) % modes.length];

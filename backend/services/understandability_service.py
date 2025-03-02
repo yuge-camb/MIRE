@@ -6,6 +6,7 @@ import numpy as np
 import os
 import logging
 from .llm_manager import LLMManager
+from . import context_store
 import random
 
 @dataclass
@@ -29,17 +30,23 @@ class DetectorService:
         with open(ambiguity_type_path, 'r') as f:
             self.ambiguity_types = json.load(f)
         
-        questions_path = os.path.join(current_dir, 'questions_stage1.json')
-        with open(questions_path, 'r') as f:
-            self.questions = json.load(f)['questions']
+        # Load questions and system context from the store
+        self.questions, self.system_context = context_store.load_context()
+
+        # Build system prompts
+        self.detection_prompt = self._build_detection_prompt()
 
         # Define confidence thresholds 
         self.HIGH_CONFIDENCE = 0.7
         self.MEDIUM_CONFIDENCE = 0.5
 
-        # Build system prompts
+    async def reset_state(self):
+        """Reset all session-specific state"""
+        self.questions, self.system_context = context_store.load_context()
         self.detection_prompt = self._build_detection_prompt()
-    
+        logging.info (f"Questions: {self.questions}, System Context: {self.system_context}")
+        logging.info (f"detection_prompt: {self.detection_prompt}")
+
     async def detect_ambiguity(self, text: str, question_idx:int) -> AmbiguityResult:
         """Detect ambiguity using logprobs analysis"""
         try:
@@ -47,6 +54,7 @@ class DetectorService:
             question_text = self.questions[str(question_idx)]
             analysis_prompt = f"Question being answered: {question_text}\n\nResponse to analyze: {text}"
             # Submit detection request through LLMManager
+
             result = await self.llm.submit_request_async(
                 messages=[
                     {"role": "system", "content": self.detection_prompt},
@@ -107,8 +115,9 @@ class DetectorService:
     def _build_detection_prompt(self) -> str:
         """Build comprehensive prompt using full ambiguity type definitions"""
         # Previous prompt building code remains the same
+        system_name = self.system_context.get('name')
         prompt_parts = [
-        """You are an expert requirement analyst analysing raw responses from a requirement elicitation survey for ambiguity in a university engineering module review system context.
+        f"""You are an expert requirement analyst analysing raw responses from a requirement elicitation survey for ambiguity in a {system_name}.
 
         For each response, you will be given:
         1. The survey question being answered

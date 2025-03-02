@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import torch.nn.functional as F
+from . import context_store 
 import logging
 import asyncio
 import os
@@ -20,14 +21,18 @@ class ConsistencyService:
         self.contradiction_threshold = 0.9
         # Load questions 
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        questions_path = os.path.join(current_dir, 'questions_stage1.json')
-        with open(questions_path, 'r') as f:
-            self.questions = json.load(f)['questions']
+        self.questions, self.system_context = context_store.load_context()
+
+    async def reset_state(self):
+        """Reset all session-specific state"""
+        self.questions, self.system_context = context_store.load_context()
+        logging.info (f"Questions: {self.questions}, System Context: {self.system_context}")
     
     def _add_context(self, text: str, question_idx: int) -> str:
         """Add question context to the statement."""
         question_text = self.questions[str(question_idx)]
-        return f"In a requirement elicitation survey about the university module review system, when asked '{question_text}', the stakeholder responded: {text}"
+        system_name = self.system_context.get('name')
+        return f"In a requirement elicitation survey about the {system_name}, when asked '{question_text}', the stakeholder responded: {text}"
 
     async def check_consistency(self, current_segment: Dict, previous_segments: List[Dict]) -> ContradictionResult:
         """Check consistency against previous segments"""

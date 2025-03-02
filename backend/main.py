@@ -11,6 +11,8 @@ from datetime import datetime
 import logging
 import os
 import asyncio
+from services import context_store
+
 
 app = FastAPI()
 llm_manager = LLMManager()
@@ -56,7 +58,24 @@ async def websocket_endpoint(websocket: WebSocket):
                 session_id = data["sessionId"]
                 logger.create_session_directory(session_id)
                 session_state["segments"] = data.get("segments", {})   #Initialize session state      
+
+                # Set the active context
+                context_id = data.get("context", "context1")
+                context_store.set_context(context_id)
+                logging.info(f"Setting context to: {context_id}")
+
                 await requirement_service.reset_state()
+                await intervention_service.reset_state()
+                await analysis_service.reset_state()
+
+                # Log session start information
+                logger.log({
+                    "type": "session_start",
+                    "sessionId": session_id,
+                    "context": data.get("context"),
+                    "initiativeMode": data.get("initiativeMode"),
+                    "timestamp": data.get("timestamp")
+                })
                 
             elif data["type"] == "segment_update":
                 uuid = data["uuid"]
@@ -188,24 +207,3 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         print("Client disconnected")
-
-# @app.get("/api/interventions/{uuid}")
-# async def get_interventions(uuid: str):
-#     """Get active interventions for a segment"""
-#     return {
-#         "interventions": intervention_service.get_interventions(uuid)
-#     }
-
-@app.post("/api/chat/message")
-async def send_chat_message(data: dict):
-    """Handle chat messages"""
-    return await llm_manager.handle_chat_message(
-        data["questionId"], 
-        data["message"]
-    )
-
-@app.post("/api/survey/submit")
-async def submit_survey(data: dict):
-    """Submit final survey responses"""
-    # TODO: Implement survey submission
-    return {"status": "success"}

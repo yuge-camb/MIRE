@@ -53,6 +53,8 @@ export const useSurveyStore = create(
       requirementStates: {}, // Track status by requirementId: { [requirementId]: 'pending'|'validated'|'rejected' }
       requirementRatings: {}, // Store ratings: { [requirementId]: 1-5 }
       generationErrors: {}, // Store requirement generation errors by questionId
+      // User study mode management
+      initiativeMode: 'mixed', // 'mixed' or 'fixed' - controls initiative mode
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -69,8 +71,8 @@ export const useSurveyStore = create(
       },
 
       // Session Management
-      startSession: (sessionId) => set(state => {
-        state.wsService?.sendSessionStart(sessionId);
+      startSession: (sessionId, context, initiativeMode) => set(state => {
+        state.wsService?.sendSessionStart(sessionId, context, initiativeMode);
         return { 
             sessionId
         };
@@ -198,7 +200,6 @@ export const useSurveyStore = create(
         // Accepts optional newText for intervention updates, otherwise uses current segment text for direct editing case
         const textToAnalyze = newText !== undefined ? newText : segment?.text;
         const lastAnalyzedText = state.lastAnalyzedTexts[uuid];
-        console.log(`[analyzeSegmentIfNeeded] Current lastAnalyzedText: ${lastAnalyzedText}`);
 
         if (textToAnalyze?.length >= 5 && 
             (lastAnalyzedText === undefined || textToAnalyze !== lastAnalyzedText)) {
@@ -393,17 +394,25 @@ export const useSurveyStore = create(
       },
 
       // Intervention Management
-      addIntervention: (intervention) => set(state => ({
-        interventions: [...state.interventions, {
-          ...intervention,
-          response: null,
-          responseTime: null,
-          appearanceTime: Date.now(),
-          firstInteractionTime: null, 
-
-        }],
-        globalDisplayMode: 'default'
-      })),
+      addIntervention: (intervention) => set(state => {
+        // Base update with new intervention
+        const update = {
+          interventions: [...state.interventions, {
+            ...intervention,
+            response: null,
+            responseTime: null,
+            appearanceTime: Date.now(),
+            firstInteractionTime: null, 
+          }]
+        };
+        
+        // Only reset display mode to default in mixed initiative mode
+        if (state.initiativeMode === 'mixed') {
+          update.globalDisplayMode = 'default';
+        }
+        
+        return update;
+      }),
 
       trackInterventionInteraction: (interventionId) => {
         // First get the intervention
@@ -703,12 +712,6 @@ export const useSurveyStore = create(
           ]
         };
       }),
-      //Bulk Dismissal
-      setBulkDismissalMode: (enabled) => set({ 
-        bulkDismissalMode: enabled,
-        // Clear bulk interventions when disabling
-        bulkDismissalInterventions: enabled ? get().bulkDismissalInterventions : []
-      }),
       
       // Mark all active interventions for bulk dismissal
       startBulkDismissal: () => set(state => {
@@ -717,11 +720,20 @@ export const useSurveyStore = create(
           !int.responseTime && 
           !int.isStale
         );
-        
-        return {
-          bulkDismissalMode: true,
-          bulkDismissalInterventions: activeInterventions
-        };
+        // Immediately respond to all active interventions
+        activeInterventions.forEach(intervention => {
+          state.respondToIntervention(
+            intervention.id,
+            'dismiss', // Use 'dismiss' as the response
+            null,      // No text changes
+            null       // No target UUID needed
+          );
+        });
+        return {};
+        // return {
+        //   bulkDismissalMode: true,
+        //   bulkDismissalInterventions: activeInterventions
+        // };
       }),
       
       // Handle bulk feedback submission
@@ -759,9 +771,15 @@ export const useSurveyStore = create(
       }),
 
       // Intervention mode toggle
-      toggleInterventionMode: () => set(state => ({ 
-        interventionMode: state.interventionMode === 'on' ? 'off' : 'on' 
-      })),
+      toggleInterventionMode: () => set(state => {
+        // Don't allow toggling intervention mode in fixed initiative mode
+        if (state.initiativeMode === 'fixed') return state;
+        
+        // Normal toggle for mixed mode
+        return { 
+          interventionMode: state.interventionMode === 'on' ? 'off' : 'on' 
+        };
+      }),
 
       // Manual analysis trigger when intervention mode is off
       triggerManualAnalysis: (uuid) => set(state => {
@@ -796,6 +814,9 @@ export const useSurveyStore = create(
 
       // Start inactivity monitoring for a question
       startInactivityMonitor: (questionId) => set(state => {
+        // Skip timer in fixed mode
+        if (state.initiativeMode === "fixed") return state;
+
         console.log(`Starting inactivity monitor for question ${questionId}`);
         
         // Clear any existing timers
@@ -1334,26 +1355,30 @@ export const useSurveyStore = create(
         return state.requirementRatings[requirementId] || null;
       },
 
-      
-      // Debug Helpers
-      setDebugMode: (enabled) => set({ debugMode: enabled }),
-      toggleDebugMode: () => set(state => ({ 
-        debugMode: !state.debugMode 
-      })),
-
-      // Chat Management
-      addChatMessage: (questionId, message, isUser = true) => set(state => ({
-        chatHistory: {
-          ...state.chatHistory,
-          [questionId]: [
-            ...(state.chatHistory[questionId] || []),
-            { message, isUser, timestamp: Date.now() }
-          ]
+      // User study mode management
+      setInitiativeMode: (newMode) => set(state => {
+        // If switching to fixed mode, force panel display
+        if (newMode === "fixed") {
+          return {
+            initiativeMode: newMode,
+            globalDisplayMode: "panel", // Force panel display in fixed mode
+            interventionMode: "off" // Turn off auto interventions in fixed mode
+          };
         }
-      })),
-      setActiveChat: (questionId) => set({ 
-        activeChat: questionId 
-      })
+
+        if (newMode === "mixed") {
+          return {
+            initiativeMode: newMode,
+            globalDisplayMode: "default", // Use default display in fixed mode
+            interventionMode: "on" // Turn on auto interventions in mixed mode
+          };
+        }
+        
+        // Otherwise just set the mode
+        return {
+          initiativeMode: newMode
+        };
+      }),
     })
   )
 );
