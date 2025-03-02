@@ -34,13 +34,13 @@ class Logger:
             filename = f"{data['type']}s.json"  
             filepath = os.path.join(self.log_dir, filename)
             self._log_to_file_by_uuid(filepath, data)
-        elif data["type"] in["session_start","activity_timeline", "intervention_feedback" , "ambiguity_analysis", "consistency_analysis"] :
+        elif data["type"] in["session_start", "activity_timeline", "ambiguity_analysis", "consistency_analysis", "intervention_mode_change", "display_mode_change"]:
             logging.debug(f"Processing standard log for type: {data['type']}")
             filename = f"{data['type']}.json"  
             filepath = os.path.join(self.log_dir, filename)
             self._log_to_file(filepath, data)
         # Handle requirement-related logs by question_id
-        elif data["type"] in ["segment_similarity", "stability_check", "requirement_generation"]:
+        elif data["type"] in ["segment_similarity", "stability_check", "requirement_generation", "requirement_rating"]:
             logging.debug(f"Processing question_id based log for type: {data['type']}")
             # Get question_id (could be either question_id or question_idx)
             question_id = data.get("question_idx")

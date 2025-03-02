@@ -189,6 +189,28 @@ async def websocket_endpoint(websocket: WebSocket):
                     "interventionId": data.get("interventionId"),
                     "feedback": data
                 })
+            
+            elif data["type"] == "display_mode_change":
+                # Log display mode change
+                logger.log({
+                    "type": "display_mode_change",
+                    "data": data
+                })
+
+            elif data["type"] == "intervention_mode_change":
+                # Log intervention mode change
+                logger.log({
+                    "type": "intervention_mode_change",
+                    "data": data
+                })
+
+            elif data["type"] == "requirement_rating":
+                # Log requirement rating
+                logger.log({
+                    "type": "requirement_rating",
+                    "question_idx": data["questionId"],
+                    "data": data
+                })
                 
             elif data["type"] == "submit_survey":
                 # Log final survey state

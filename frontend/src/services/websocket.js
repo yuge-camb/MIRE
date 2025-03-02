@@ -323,6 +323,38 @@ export class WebSocketService {
     });
 }
 
+  sendModeChange(type, newMode, currentQuestionId, currentSegmentId, totalActive, inlineCount, panelCount) {
+    this.sendMessage({
+      type: type,
+      mode: newMode,
+      context: {
+        questionId: currentQuestionId,
+        segmentId: currentSegmentId,
+        timestamp: new Date().toISOString(),
+        activeInterventions: {
+          total: totalActive,
+          inline: inlineCount,
+          panel: panelCount,
+        }
+      }
+    });
+  }
+
+  sendRequirementRating(requirementId, requirementText, rating, questionId, segments, activeInterventions) {
+    this.sendMessage({
+      type: 'requirement_rating',
+      questionId: questionId,
+      requirementId: requirementId,
+      context: {
+        rating: rating,
+        requirement: requirementText,
+        segments: segments,
+        activeInterventions: activeInterventions,
+        timestamp: new Date().toISOString(),
+      }
+    });
+  }
+
   pauseAnalysis() {
     this.sendMessage({
       type: 'pause_analysis'

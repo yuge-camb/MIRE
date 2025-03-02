@@ -42,7 +42,7 @@ export const useSurveyStore = create(
       lastActivityTime: {}, // Tracks last activity timestamp by question ID
       activeTimerQuestions: new Set(), // Tracks which questions have active timers
       //Configuration constants
-      softInactivityThreshold: 10000, // 30 seconds for stability check
+      softInactivityThreshold: 30000, // 30 seconds for stability check
       hardInactivityThreshold: 120000, // 120 seconds for forced generation
       //Requirement generation
       segmentRequirementState: {}, // Maps segment UUIDs to their requirement state: 'needs_generation', 'generating', 'no_need_generation'
@@ -356,7 +356,7 @@ export const useSurveyStore = create(
       // Used when sending activity timeline to server
       getActivityTimeline: (responseTime) => {
         const state = get();
-        const TARGET_DURATION = 60000; // Want 60s of activity, but might not have this much
+        const TARGET_DURATION = 30000; // Want 30s of activity, but might not have this much
         const endTime = responseTime;
         
         // Get all events up to response time, sorted newest to oldest
@@ -592,8 +592,42 @@ export const useSurveyStore = create(
       })),
 
       // Intervention Display Mode
-      setGlobalDisplayMode: (mode) => set({ 
-        globalDisplayMode: mode 
+      setGlobalDisplayMode: (mode) => set(state => {
+        // Get current active editing segment for context
+        const activeSegmentUuid = state.activeEditingSegment;
+        const activeSegment = activeSegmentUuid ? state.segments[activeSegmentUuid] : null;
+        const questionId = activeSegment ? activeSegment.questionIdx : null;
+        
+        // Get total active interventions count
+        const totalActiveInterventions = state.getActiveInterventions().total;
+        
+        // Count inline vs panel interventions
+        const activeInterventions = state.interventions.filter(int => 
+          !int.response && !int.responseTime && !int.isStale
+        );
+        
+        const inlineInterventions = activeInterventions.filter(int => 
+          state.getInterventionDisplayMode(int) === 'inline'
+        ).length;
+        
+        const panelInterventions = activeInterventions.filter(int => 
+          state.getInterventionDisplayMode(int) === 'panel'
+        ).length;
+        
+        // Send tracking data via WebSocket
+        state.wsService?.sendModeChange(
+          "display_mode_change",
+          mode, 
+          questionId,
+          activeSegmentUuid,
+          totalActiveInterventions,
+          inlineInterventions,
+          panelInterventions
+        );
+        
+        return { 
+          globalDisplayMode: mode 
+        };
       }),
 
       getInterventionDisplayMode: (intervention) => {
@@ -774,9 +808,44 @@ export const useSurveyStore = create(
         // Don't allow toggling intervention mode in fixed initiative mode
         if (state.initiativeMode === 'fixed') return state;
         
+        // Get current active editing segment for context
+        const activeSegmentUuid = state.activeEditingSegment;
+        const activeSegment = activeSegmentUuid ? state.segments[activeSegmentUuid] : null;
+        const questionId = activeSegment ? activeSegment.questionIdx : null;
+        
+        // Determine new mode
+        const newMode = state.interventionMode === 'on' ? 'off' : 'on';
+        
+        // Get total active interventions count
+        const totalActiveInterventions = state.getActiveInterventions().total;
+        
+        // Count inline vs panel interventions
+        const activeInterventions = state.interventions.filter(int => 
+          !int.response && !int.responseTime && !int.isStale
+        );
+        
+        const inlineInterventions = activeInterventions.filter(int => 
+          state.getInterventionDisplayMode(int) === 'inline'
+        ).length;
+        
+        const panelInterventions = activeInterventions.filter(int => 
+          state.getInterventionDisplayMode(int) === 'panel'
+        ).length;
+        
+        // Send tracking data via WebSocket
+        state.wsService?.sendModeChange(
+          "intervention_mode_change",
+          newMode, 
+          questionId,
+          activeSegmentUuid,
+          totalActiveInterventions,
+          inlineInterventions,
+          panelInterventions
+        );
+        
         // Normal toggle for mixed mode
         return { 
-          interventionMode: state.interventionMode === 'on' ? 'off' : 'on' 
+          interventionMode: newMode
         };
       }),
 
@@ -1311,19 +1380,47 @@ export const useSurveyStore = create(
       // Requirement Panel Management
       // Set requirement state (validate/reject)
       setRequirementState: (requirementId, newState, rating = null) => set(state => {
-        // If rejecting, mark linked segments as needing generation again
-        if (newState === 'rejected') {
+        // // If rejecting, mark linked segments as needing generation again
+        // if (newState === 'rejected') {
+        //   const requirement = Object.values(state.requirements)
+        //     .flat()
+        //     .find(req => req.id === requirementId);
+            
+        //     if (requirement && requirement.segments) {
+        //       requirement.segments.forEach(segmentUuid => {
+        //         state.markSegmentAsNeedsGeneration(segmentUuid);
+        //       });
+        //   }
+        // }
+        if (newState === 'validated' && rating) {
+          // Find the requirement to get its text and other data
           const requirement = Object.values(state.requirements)
             .flat()
             .find(req => req.id === requirementId);
             
-            if (requirement && requirement.segments) {
-              requirement.segments.forEach(segmentUuid => {
-                state.markSegmentAsNeedsGeneration(segmentUuid);
-              });
+          if (requirement) {
+            // Get question ID
+            const segmentUuid = requirement.segments[0]; // Use first linked segment
+            const questionId = state.segments[segmentUuid]?.questionIdx;
+            
+            // Get active interventions for this question
+            const activeInterventions = state.interventions.filter(int => {
+              const segmentQuestionId = state.segments[int.uuid]?.questionIdx;
+              return segmentQuestionId === questionId && !int.response && !int.responseTime;
+            }).length;
+            
+            // Send tracking data via WebSocket
+            state.wsService?.sendRequirementRating(
+              requirementId,
+              requirement.requirement, // the text
+              rating,
+              questionId,
+              requirement.segments,
+              activeInterventions
+            );
           }
         }
-        
+
         return {
           requirementStates: {
             ...state.requirementStates,
