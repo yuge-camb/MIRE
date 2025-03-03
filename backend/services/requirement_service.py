@@ -337,11 +337,12 @@ class RequirementService:
         - Be specific and unambiguous
         - Resolve inconsistencies between segments where possible
         - Requirements should capture the intent behind segments, not just paraphrase them
-        - Given your own interpretation, create actual requirements rather than using the exact same wording as the user's answer
+        - Given your own interpretation, create testable requirements rather than using the exact same wording as the user's answer
+        - Avoid directly using the users' words in the requirements as much as possible
         - Link each requirement to its source segment(s)
 
         Return results in JSON format with the structure: [{"requirement": "...", "segments": ["uuid1", "uuid2"]}]
-        The 'segments' field should contain the UUIDs of the segments this requirement is derived from.
+        The 'segments' field should contain the UUIDs of all segments that contributed to this requirement.
         """
         
         # Call LLM

@@ -54,6 +54,7 @@ export const useSurveyStore = create(
       generationErrors: {}, // Store requirement generation errors by questionId
       // User study mode management
       initiativeMode: 'mixed', // 'mixed' or 'fixed' - controls initiative mode
+      activeContext: "context1", // Active context for user study 
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -1452,6 +1453,8 @@ export const useSurveyStore = create(
       },
 
       // User study mode management
+      setActiveContext: (context) => set({ activeContext: context }),
+      
       setInitiativeMode: (newMode) => set(state => {
         // If switching to fixed mode, force panel display
         if (newMode === "fixed") {

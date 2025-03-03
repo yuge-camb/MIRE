@@ -1,46 +1,40 @@
 export const CONTEXTS = {
-    // Context 1: Engineering Project Collaboration Platform
+    // Context 1: JCR Welfare System
     "context1": {
-      title: "Engineering Project Collaboration Platform",
-      description: "Help us design a platform for engineering students to find teammates, manage group projects, track contributions, and share project artifacts.",
+      title: "Cambridge College JCR Welfare System",
+      description: "Help us design a digital platform to support the JCR welfare team in providing student support services, managing resources, and coordinating welfare activities within a Cambridge college.",
+      user: "a member of your college's JCR team",
       questions: [
-        { id: 0, text: "What features would help you find suitable teammates for engineering projects? (one point per response box)"},
-        { id: 1, text: "What tools would help your team coordinate tasks and deadlines effectively? (one point per response box)" },
-        { id: 2, text: "What information should be tracked about individual contributions to group projects? (one point per response box)" },
-        { id: 3, text: "What features would make sharing project files and documentation easier? (one point per response box)" },
-        { id: 4, text: "How could the platform help teams communicate with their supervisors? (one point per response box)" },
-        { id: 5, text: "What additional features would you want in a project collaboration platform? (one point per response box)" }
-      ]
+        { id: 0, text: "What specific communication features should the system include for students to request welfare support from the JCR team? (one point per response box)"},
+        { id: 1, text: "What inventory management capabilities does the welfare team need to track and distribute physical resources (e.g., sexual health supplies, wellbeing materials)? (one point per response box)" },
+        { id: 2, text: "What features should the system include to help the welfare team plan, schedule, and manage welfare events and support sessions? (one point per response box)" },
+        { id: 3, text: "What functions should be available to allow for smooth annual handover between outgoing and incoming welfare officers? (one point per response box)" }]
     },
     
-    // Context 2: Engineering Resource Library System
+    // Context 2: Student Society Event Management
     "context2": {
-      title: "Engineering Resource Library System",
-      description: "Help us design a platform for discovering, organizing, and rating study materials, reference documents, and practice problems for engineering courses.",
+      title: "Cambridge Student Society Event Management Platform",
+      description: "Help us design a digital platform for student societies to plan, promote, execute, and evaluate events, while managing resources, member participation, and society growth.",
+      user: "a committee member of a Cambridge student society",
       questions: [
-        { id: 0, text: "What search and filtering capabilities would help you find relevant engineering resources? (one point per response box)"},
-        { id: 1, text: "What information about each resource would help you determine its usefulness? (one point per response box)" },
-        { id: 2, text: "What features would encourage students to contribute and organize materials? (one point per response box)" },
-        { id: 3, text: "How should resources be categorized or tagged for easy discovery? (one point per response box)" },
-        { id: 4, text: "What feedback mechanisms would help improve resource quality over time? (one point per response box)" },
-        { id: 5, text: "What additional features would make the resource library valuable for your studies? (one point per response box)" }
+        { id: 0, text: "What event planning tools should the system provide for society committees to organize events from conception to execution? (one point per response box)"},
+        { id: 1, text: "What features should the system include to help societies during the actual execution of events (e.g., check-in, attendee management, real-time coordination)? (one point per response box)" },
+        { id: 2, text: "What financial management capabilities should the system offer to help societies track event budgets and expenses? (one point per response box)" },
+        { id: 3, text: "What analytics and reporting features should the system provide to help societies evaluate past events and plan future ones? (one point per response box)" }
       ]
     }
   };
-
-// Default context if none specified
-export const DEFAULT_CONTEXT = "context1";
-
-// Helper function to get questions from a context
-export const getQuestionsForContext = (contextId) => {
-  const context = CONTEXTS[contextId] || CONTEXTS[DEFAULT_CONTEXT];
-  return context.questions;
-};
-
-// Helper function to get context details
-export const getContextDetails = (contextId) => {
-  return CONTEXTS[contextId] || CONTEXTS[DEFAULT_CONTEXT];
-};
+  
+  // Helper function to get questions from a context
+  export const getQuestionsForContext = (contextId) => {
+    const context = CONTEXTS[contextId];
+    return context.questions;
+  };
+  
+  // Helper function to get context details
+  export const getContextDetails = (contextId) => {
+    return CONTEXTS[contextId];
+  };
 
 // const QUESTIONS = [
 //   { id: 0, text: "If you were using an app to look up module reviews, what information would you want to see? (one point per response box)"},
