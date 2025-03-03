@@ -170,7 +170,7 @@ class RequirementService:
                 "question_idx": question_idx,
                 "is_stable": all_stable,
                 "segment_status": segment_status,
-                "timestamp": time.time()
+                "timestamp": datetime.now().isoformat()
                 }
         })
 
@@ -258,6 +258,7 @@ class RequirementService:
             if question_id in self.requirements_state and self.requirements_state[question_id]["discarded"]:
                 logging.info(f"🚫 [RequirementService] Skipping sending results for discarded generation (question {question_id})")
                 return
+            
             # Send results back to frontend
             await self._send_generation_complete(question_id, requirements)
             
@@ -432,7 +433,7 @@ class RequirementService:
             "type": "requirement_generation_complete",
             "questionId": question_id,
             "requirements": requirements,
-            "timestamp": time.time()
+            "timestamp": datetime.now().isoformat()
         })
         
         logging.info(f"✅ [RequirementService] Sent {len(requirements)} requirements for question {question_id}")
@@ -446,7 +447,7 @@ class RequirementService:
             "questionId": question_id,
             "error": error_message,
             "details": details,
-            "timestamp": time.time()
+            "timestamp": datetime.now().isoformat()
         })
         
         logging.error(f"❌ [RequirementService] Requirement generation failed for question {question_id}: {error_message}")

@@ -6,7 +6,7 @@ export const CONTEXTS = {
       user: "a member of your college's JCR team",
       questions: [
         { id: 0, text: "What specific communication features should the system include for students to request welfare support from the JCR team? (one point per response box)"},
-        { id: 1, text: "What inventory management capabilities does the welfare team need to track and distribute physical resources (e.g., sexual health supplies, wellbeing materials)? (one point per response box)" },
+        { id: 1, text: "What inventory management capabilities does the welfare team need to track and distribute physical resources (e.g., wellbeing materials, snacks)? (one point per response box)" },
         { id: 2, text: "What features should the system include to help the welfare team plan, schedule, and manage welfare events and support sessions? (one point per response box)" },
         { id: 3, text: "What functions should be available to allow for smooth annual handover between outgoing and incoming welfare officers? (one point per response box)" }]
     },

@@ -66,7 +66,7 @@ class InterventionService:
             1. The survey question being answered
             2. A response that needs interpretation
             
-            Generate interpretations that specifically address how the ambiguous response could be understood in the context of the original question.
+            Generate interpretations that specifically address how the ambiguous response could be understood in the context of the original question. Consider what potential requirements might logically correspond to the user's response given the nature of the {system_name} and its intended purpose.
             
             Based on our ambiguity database, here are examples of how different types of ambiguity can be interpreted:"""
         ]
