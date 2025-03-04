@@ -5,10 +5,10 @@ export const CONTEXTS = {
       description: "Help us design a digital platform to support the JCR welfare team in providing student support services, managing resources, and coordinating welfare activities within a Cambridge college.",
       user: "a member of your college's JCR team",
       questions: [
-        { id: 0, text: "What specific communication features should the system include for students to request welfare support from the JCR team? (one point per response box)"},
-        { id: 1, text: "What inventory management capabilities does the welfare team need to track and distribute physical resources (e.g., wellbeing materials, snacks)? (one point per response box)" },
-        { id: 2, text: "What features should the system include to help the welfare team plan, schedule, and manage welfare events and support sessions? (one point per response box)" },
-        { id: 3, text: "What functions should be available to allow for smooth annual handover between outgoing and incoming welfare officers? (one point per response box)" }]
+        { id: 0, text: "What communication features should the system include for students to request welfare support from the JCR team? (at least 2 general ideas and 2 specific implementation details; one point per response box)"},
+        { id: 1, text: "What inventory management capabilities does the welfare team need to track and distribute physical resources (e.g., wellbeing materials, snacks)? (at least 2 general ideas and 2 specific implementation details; one point per response box)" },
+        { id: 2, text: "What features should the system include to help the welfare team plan, schedule, and manage welfare events and support sessions? (at least 2 general ideas and 2 specific implementation details; one point per response box)" },
+        { id: 3, text: "What functions should be available to allow for smooth annual handover between outgoing and incoming welfare officers? (at least 2 general ideas and 2 specific implementation details; one point per response box)" }]
     },
     
     // Context 2: Student Society Event Management
@@ -17,10 +17,10 @@ export const CONTEXTS = {
       description: "Help us design a digital platform for student societies to plan, promote, execute, and evaluate events, while managing resources, member participation, and society growth.",
       user: "a committee member of a Cambridge student society",
       questions: [
-        { id: 0, text: "What event planning tools should the system provide for society committees to organize events from conception to execution? (one point per response box)"},
-        { id: 1, text: "What features should the system include to help societies during the actual execution of events (e.g., check-in, attendee management, real-time coordination)? (one point per response box)" },
-        { id: 2, text: "What financial management capabilities should the system offer to help societies track event budgets and expenses? (one point per response box)" },
-        { id: 3, text: "What analytics and reporting features should the system provide to help societies evaluate past events and plan future ones? (one point per response box)" }
+        { id: 0, text: "What event planning tools should the system provide for society committees to organize events from conception to execution? (at least 2 general ideas and 2 specific implementation details; one point per response box)"},
+        { id: 1, text: "What features should the system include to help societies during the actual execution of events (e.g., check-in, attendee management, real-time coordination)? (at least 2 general ideas and 2 specific implementation details; one point per response box)" },
+        { id: 2, text: "What financial management capabilities should the system offer to help societies track event budgets and expenses? (at least 2 general ideas and 2 specific implementation details; one point per response box)" },
+        { id: 3, text: "What analytics and reporting features should the system provide to help societies evaluate past events and plan future ones? (at least 2 general ideas and 2 specific implementation details; one point per response box)" }
       ]
     }
   };

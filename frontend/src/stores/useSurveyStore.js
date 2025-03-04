@@ -240,10 +240,10 @@ export const useSurveyStore = create(
           const shouldUpdateLastAnalyzedText = state.interventionMode === 'on' || isManualTrigger;
           
           return {
-            analysisStatus: {
+            analysisStatus: shouldUpdateLastAnalyzedText ? {
               ...state.analysisStatus,
               [uuid]: 'pending'
-            },
+            } : state.analysisStatus,
             lastAnalyzedTexts: shouldUpdateLastAnalyzedText ? {
               ...state.lastAnalyzedTexts,
               [uuid]: textToAnalyze

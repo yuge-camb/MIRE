@@ -74,7 +74,8 @@ class LLMManager:
             kwargs=kwargs
         )
         priority = self.config.priorities.get(task_type, 10)  # Default low priority
-        self.request_queue.put((priority, request.timestamp, request))
+        # Add a unique counter to break timestamp ties
+        self.request_queue.put((priority, request.timestamp, id(request), request))
         return request_id
 
     def get_request_result(self, request_id: str) -> Optional[Dict[str, Any]]:
@@ -113,7 +114,7 @@ class LLMManager:
         """
         while True:
             try:
-                priority, _, request = self.request_queue.get(timeout=1)
+                priority, _, _, request = self.request_queue.get(timeout=1)  # Updated to unpack 4 items
                 future = self.thread_pool.submit(self._execute_request, request)
                 with self.lock:
                     self.active_requests[request.request_id] = future

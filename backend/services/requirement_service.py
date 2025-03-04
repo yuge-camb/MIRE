@@ -249,6 +249,8 @@ class RequirementService:
             
             if not segment_texts:
                 logging.warning(f"⚠️ [RequirementService] No valid segments found for question {question_id}")
+                error_message = "No valid segments found for requirement generation"
+                await self._send_generation_failed(question_id, error_message, error_message)
                 return
             
             # Generate requirements through LLM
@@ -392,6 +394,12 @@ class RequirementService:
             error_message = "Invalid LLM response format"
             await self._send_generation_failed(question_id, error_message, str(e))
             raise Exception(f"Invalid LLM response format: {e}")
+
+        except Exception as e:
+            logging.error(f"❌ [RequirementService] Error processing LLM response: {e}")
+            error_message = "Error processing LLM response"
+            await self._send_generation_failed(question_id, error_message, str(e))
+            raise Exception(f"Error processing LLM response: {e}")
 
     def _build_requirement_prompt(self, question_id: int, question_text: str, segment_texts: Dict[str, str]):
         """

@@ -7,7 +7,7 @@
     },
     "questions": {
       "0": "What specific communication features should the system include for students to request welfare support from the JCR team? (one point per response box)",
-      "1": "What inventory management capabilities does the welfare team need to track and distribute physical resources (e.g., sexual health supplies, wellbeing materials)? (one point per response box)",
+      "1": "What inventory management capabilities does the welfare team need to track and distribute physical resources (e.g., wellbeing materials, snacks)? (one point per response box)",
       "2": "What features should the system include to help the welfare team plan, schedule, and manage welfare events and support sessions? (one point per response box)",
       "3": "What functions should be available to allow for smooth annual handover between outgoing and incoming welfare officers? (one point per response box)"
     }

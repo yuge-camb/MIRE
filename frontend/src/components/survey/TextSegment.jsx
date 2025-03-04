@@ -17,7 +17,7 @@ const TextSegment = ({ questionId, segmentId }) => {
     triggerManualAnalysis,
     interventionMode,
     markSegmentAsNeedsGeneration,
-    resetTimerIfActive
+    resetTimerIfActive,
   } = useSurveyStore();
 
   const [uuid] = useState(() => {
