@@ -120,9 +120,14 @@ export class WebSocketService {
           break;
         
         case 'requirement_generation_failed':
-          this.store.handleRequirementGenerationFailed(data.questionId, data.error, data.details);
+          this.store.handleRequirementGenerationFailed(data.questionId, data.error, data.details, data.target || "main" );
           break;
-        
+
+        case 'baseline_requirements_ready':
+          console.log('Baseline requirements received:', data);
+          this.store.receiveBaselineRequirements(data.questionId, data.requirements);
+          break;
+
         case 'intervention_feedback_received':
           console.log('Feedback received confirmation:', data);
           break;
@@ -302,6 +307,14 @@ export class WebSocketService {
     this.sendMessage({
       type: 'discard_requirement_generation',
       questionId,
+      timestamp: new Date().toISOString(),
+      sessionId: this.sessionId
+    });
+  }
+
+  sendGenerateAllBaselineRequirements() {
+    this.sendMessage({
+      type: 'generate_all_baseline_requirements',
       timestamp: new Date().toISOString(),
       sessionId: this.sessionId
     });

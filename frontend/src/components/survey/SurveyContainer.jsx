@@ -176,7 +176,10 @@ const SurveyContainer = () => {
     requirements,
     requirementStates,
     questionHasSegmentsNeedingGeneration,
-    generateRequirements
+    generateRequirements,
+    baselineRequirements,
+    baselineRequirementRatings,
+    showBaselinePanel
   } = useSurveyStore.getState();
 
   // 1. Check for any questions that need requirement generation
@@ -216,6 +219,33 @@ const SurveyContainer = () => {
     setSubmissionStatus('Please rate all requirements in the Requirements Panel before submitting.');
     return;
   }
+
+    // 4. Generate baseline requirements if not already done
+    const hasBaselineRequirements = Object.keys(baselineRequirements).length > 0;
+  
+    if (!hasBaselineRequirements) {
+      setSubmissionStatus('Generating baseline requirements from your initial answers...');
+      wsService?.sendGenerateAllBaselineRequirements();
+      return;
+    }
+  
+    // 5. Check if all baseline requirements have been rated
+    let hasPendingBaselineRequirements = false;
+    Object.entries(baselineRequirements).forEach(([_, reqs]) => {
+      if (reqs) {
+        reqs.forEach(req => {
+          if (!baselineRequirementRatings[req.id]) {
+            hasPendingBaselineRequirements = true;
+          }
+        });
+      }
+    });
+  
+    if (hasPendingBaselineRequirements) {
+      setSubmissionStatus('Please rate all requirements in the Initial Requirements Panel before submitting.');
+      return;
+    }
+
     setSubmissionStatus('Submitting survey...');
     wsService?.sendSurveySubmission(answers);
     setShowBulkDismissButton(false);

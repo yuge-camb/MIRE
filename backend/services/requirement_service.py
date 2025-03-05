@@ -30,6 +30,12 @@ class RequirementService:
         # {question_id: { "timestamp": timestamp}, "discarded": True/False,  "segments": [s["uuid"] for s in segments],}
         self.requirements_state = {}
 
+        # Store initial segment texts for baseline requirements
+        self.initial_segment_texts = {}
+        
+        # Store baseline requirements per question
+        self.baseline_requirements = {}
+
         # Load questions and system context from the store
         self.questions, self.system_context = context_store.load_context()
     
@@ -38,6 +44,8 @@ class RequirementService:
         self.segment_similarity_history.clear()
         self.latest_segment_texts.clear()
         self.requirements_state.clear()
+        self.initial_segment_texts.clear()
+        self.baseline_requirements.clear()
         self.questions, self.system_context = context_store.load_context()
         logging.info (f"Questions: {self.questions}, System Context: {self.system_context}")
 
@@ -52,7 +60,17 @@ class RequirementService:
         
         # Check if this segment exists in our records
         is_first_update = uuid not in self.latest_segment_texts
-        
+        if is_first_update:
+            question_id_str = str(question_idx)
+            if question_id_str not in self.initial_segment_texts:
+                self.initial_segment_texts[question_id_str] = {}
+            
+            self.initial_segment_texts[question_id_str][uuid] = {
+                "text": text,
+                "segment_idx": segment_idx,
+                "timestamp": current_time
+            }
+
         # Calculate similarity if this isn't the first update
         similarity_score = None
         if not is_first_update:
@@ -315,7 +333,7 @@ class RequirementService:
         else:
             logging.warning(f"⚠️ [RequirementService] No active generation found for question {question_id}")
 
-    async def _generate_requirements_with_llm(self, question_id: int, question_text: str, segment_texts: Dict[str, str]):
+    async def _generate_requirements_with_llm(self, question_id: int, question_text: str, segment_texts: Dict[str, str],  target: str = "main"):
         """
         Generate requirements using LLM.
         
@@ -385,20 +403,20 @@ class RequirementService:
             logging.error(f"Raw response: {response['choices'][0].message.content}")
             logging.info(f"requirement_text {requirement_text}")
             error_message = "Failed to parse LLM response as JSON"
-            await self._send_generation_failed(question_id, requirement_text, error_message)
+            await self._send_generation_failed(question_id, requirement_text, error_message, target)
             raise Exception("Failed to parse LLM response as JSON")
 
         except ValueError as e:
             logging.error(f"❌ [RequirementService] Invalid LLM response format: {e}")
             logging.info(f"requirement_text {requirement_text}")
             error_message = "Invalid LLM response format"
-            await self._send_generation_failed(question_id, error_message, str(e))
+            await self._send_generation_failed(question_id, error_message, str(e), target)
             raise Exception(f"Invalid LLM response format: {e}")
 
         except Exception as e:
             logging.error(f"❌ [RequirementService] Error processing LLM response: {e}")
             error_message = "Error processing LLM response"
-            await self._send_generation_failed(question_id, error_message, str(e))
+            await self._send_generation_failed(question_id, error_message, str(e), target)
             raise Exception(f"Error processing LLM response: {e}")
 
     def _build_requirement_prompt(self, question_id: int, question_text: str, segment_texts: Dict[str, str]):
@@ -446,7 +464,7 @@ class RequirementService:
         
         logging.info(f"✅ [RequirementService] Sent {len(requirements)} requirements for question {question_id}")
     
-    async def _send_generation_failed(self, question_id: int, error_message: str, details: str = None):
+    async def _send_generation_failed(self, question_id: int, error_message: str, details: str = None, target: str = "main"):
         """
         Send generation failure message to frontend.
         """
@@ -455,7 +473,81 @@ class RequirementService:
             "questionId": question_id,
             "error": error_message,
             "details": details,
+            "target": target,  # Specify where to display the error
             "timestamp": datetime.now().isoformat()
         })
         
         logging.error(f"❌ [RequirementService] Requirement generation failed for question {question_id}: {error_message}")
+
+    async def generate_baseline_requirements(self, question_id: int):
+        """
+        Generate baseline requirements using the initial segment texts for a question.
+        """
+        logging.info(f"📝 [RequirementService] Generating baseline requirements for question {question_id}")
+        
+        question_id_str = str(question_id)
+        if question_id_str not in self.initial_segment_texts:
+            logging.warning(f"⚠️ [RequirementService] No initial segments found for question {question_id}")
+            return
+        
+        # Prepare segments for requirement generation
+        segments = []
+        for uuid, data in self.initial_segment_texts[question_id_str].items():
+            segments.append({
+                "uuid": uuid,
+                "text": data["text"]
+            })
+        
+        if not segments:
+            return
+        
+        try:
+            # Get question text for context
+            question_text = self._get_question_text(question_id)
+            
+            # Create segment texts dictionary
+            segment_texts = {segment["uuid"]: segment["text"] for segment in segments}
+            
+            # Generate requirements through LLM
+            requirements = await self._generate_requirements_with_llm(question_id, question_text, segment_texts, target = "baseline")
+            
+            # Store the baseline requirements
+            self.baseline_requirements[question_id] = requirements
+            
+            # Send baseline requirements to frontend
+            await self.ws.send_json({
+                "type": "baseline_requirements_ready",
+                "questionId": question_id,
+                "requirements": requirements,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            # Log baseline generation
+            self.logger.log({
+                "type": "baseline_requirement_generation",
+                "question_idx": question_id,
+                "data": {
+                    "requirements": requirements,
+                    "segments": segments,
+                    "timestamp": datetime.now().isoformat()
+                }
+            })
+            
+        except Exception as e:
+            logging.error(f"❌ [RequirementService] Error generating baseline requirements: {e}")
+            await self._send_generation_failed(question_id, str(e), None, target="baseline")
+
+    async def handle_generate_all_baseline_requirements(self, data):
+        """Generate baseline requirements for all questions that have initial segments"""
+        logging.info(f"📊 [WebsocketHandler] Generating all baseline requirements")
+        
+        try:
+            # Get all questions with initial segments
+            question_ids = list(self.initial_segment_texts.keys())
+            
+            for question_id_str in question_ids:
+                # Generate baseline requirements for each question
+                await self.generate_baseline_requirements(int(question_id_str))
+                
+        except Exception as e:
+            logging.error(f"❌ Error generating all baseline requirements: {e}")

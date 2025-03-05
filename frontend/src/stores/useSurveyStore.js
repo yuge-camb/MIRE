@@ -55,6 +55,10 @@ export const useSurveyStore = create(
       // User study mode management
       initiativeMode: 'mixed', // 'mixed' or 'fixed' - controls initiative mode
       activeContext: "context1", // Active context for user study 
+      baselineRequirements: {},
+      showBaselinePanel: false,
+      baselineRequirementRatings: {},
+      baselineRequirementErrors: {},
 
       // WebSocket Setup
       initializeWebSocket: () => {
@@ -109,6 +113,10 @@ export const useSurveyStore = create(
         requirementStates: {},
         requirementRatings: {},
         generationErrors: {},
+        baselineRequirements: {},
+        showBaselinePanel: false,
+        baselineRequirementRatings: {},
+        baselineRequirementErrors: {},
       })),
       
       // Segment Management
@@ -1152,9 +1160,13 @@ export const useSurveyStore = create(
       }),
 
       // Method to handle requirement generation failure
-      handleRequirementGenerationFailed: (questionId, error, details = null) => set(state => {
-        console.error(`Requirement generation failed for question ${questionId}: ${error}`, details);
+      handleRequirementGenerationFailed: (questionId, error, details = null, target = "main") => set(state => {
+        console.error(`${target === "main" ? "Requirement" : "Baseline requirement"} generation failed for question ${questionId}: ${error}`, details);
         
+        // Remove pending flag
+        const { [questionId]: _, ...remainingPending } = state.pendingRequirementGeneration;
+        
+        if (target === "main") {
         // Get all segments for this question that were in 'generating' state
         const questionSegments = Object.entries(state.segments)
           .filter(([uuid, segment]) => 
@@ -1188,7 +1200,17 @@ export const useSurveyStore = create(
             }
           }
         };
-      }),
+      } else {
+        // For baseline requirements, just store the error and clear pending state
+        return {
+          pendingRequirementGeneration: remainingPending,
+          baselineRequirementErrors: {
+            ...state.baselineRequirementErrors,
+            [questionId]: { error, details }
+          }
+        };
+      }
+    }),
 
       // Stop inactivity monitoring for a question
       stopInactivityMonitor: (questionId) => set(state => {
@@ -1451,6 +1473,38 @@ export const useSurveyStore = create(
         const state = get();
         return state.requirementRatings[requirementId] || null;
       },
+
+      // Baseline Requirement Panel Management
+      receiveBaselineRequirements: (questionId, requirements) => 
+        set(state => {
+          // Create unique IDs for baseline requirements
+          const requirementsWithIds = requirements.map(req => ({
+            ...req, 
+            id: `baseline-${questionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          }));
+          
+          return {
+            baselineRequirements: {
+              ...state.baselineRequirements,
+              [questionId]: requirementsWithIds
+            },
+            // Auto-show panel when requirements are received
+            showBaselinePanel: true
+          };
+        }),
+      
+      setBaselinePanelVisibility: (visible) => set({ showBaselinePanel: visible }),
+      
+      setBaselineRequirementRating: (requirementId, rating) => 
+        set(state => ({
+          baselineRequirementRatings: {
+            ...state.baselineRequirementRatings,
+            [requirementId]: rating
+          }
+        })),
+      
+      getBaselineRequirementRating: (requirementId) => 
+        get().baselineRequirementRatings[requirementId] || 0,
 
       // User study mode management
       setActiveContext: (context) => set({ activeContext: context }),

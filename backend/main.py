@@ -150,6 +150,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "question_id": question_id,
                     "timestamp": datetime.now().isoformat()
                 })
+                
+            elif data["type"] == "generate_all_baseline_requirements":
+                await requirement_service.handle_generate_all_baseline_requirements(data)
 
             elif data["type"] == "pause_analysis":
                 await analysis_service.pause_analysis()

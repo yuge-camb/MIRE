@@ -40,7 +40,7 @@ class Logger:
             filepath = os.path.join(self.log_dir, filename)
             self._log_to_file(filepath, data)
         # Handle requirement-related logs by question_id
-        elif data["type"] in ["segment_similarity", "stability_check", "requirement_generation", "requirement_rating"]:
+        elif data["type"] in ["segment_similarity", "stability_check", "requirement_generation", "requirement_rating", "baseline_requirement_generation"]:
             logging.debug(f"Processing question_id based log for type: {data['type']}")
             # Get question_id (could be either question_id or question_idx)
             question_id = data.get("question_idx")
