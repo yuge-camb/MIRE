@@ -36,6 +36,9 @@ class RequirementService:
         # Store baseline requirements per question
         self.baseline_requirements = {}
 
+        # This will ensure we can always know if a segment is truly new
+        self.known_segment_uuids = set()
+
         # Load questions and system context from the store
         self.questions, self.system_context = context_store.load_context()
     
@@ -46,6 +49,7 @@ class RequirementService:
         self.requirements_state.clear()
         self.initial_segment_texts.clear()
         self.baseline_requirements.clear()
+        self.known_segment_uuids.clear()
         self.questions, self.system_context = context_store.load_context()
         logging.info (f"Questions: {self.questions}, System Context: {self.system_context}")
 
@@ -60,7 +64,12 @@ class RequirementService:
         
         # Check if this segment exists in our records
         is_first_update = uuid not in self.latest_segment_texts
-        if is_first_update:
+        # NEW: Check if this is truly the first time we've seen this UUID
+        is_true_first_occurrence = uuid not in self.known_segment_uuids
+        self.known_segment_uuids.add(uuid)
+        
+        # Only store in initial_segment_texts if this is truly the first time we've seen it
+        if is_true_first_occurrence:
             question_id_str = str(question_idx)
             if question_id_str not in self.initial_segment_texts:
                 self.initial_segment_texts[question_id_str] = {}
