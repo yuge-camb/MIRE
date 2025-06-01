@@ -6,7 +6,7 @@ This research project investigates how mixed-initiative interaction can enhance 
 
 The system provides an interactive survey environment where users answer questions designed to elicit software requirements. As users provide their answers, the AI system dynamically intervenes when it detects potential issues with understandability or consistency. The goal is to assess whether this mixed-initiative approach helps to improve requirement validability, which will be evaluated by comparing user assessments of requirement quality with and without the system's interventions.
 
-![System Architecture](docs/system_architecture.png)
+![System Architecture](docs/figures/system_architecture.png)
 
 The system processes individual answer segments through parallel LLM analysis for requirement quality issues. Intervention decisions are based on expected utility calculations:
 
