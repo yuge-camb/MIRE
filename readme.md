@@ -8,7 +8,7 @@ The system provides an interactive survey environment where users answer questio
 
 ![System Architecture](docs/figures/system_architecture.png)
 
-The system processes individual answer segments through parallel LLM analysis for requirement quality issues. Intervention decisions are based on expected utility calculations:
+The system processes individual answer segments through parallel LLM analysis for requirement quality issues. The intervention triggering mechanism is initially modelled using expected utility calculations in Phase I:
 
 ```
 eu(A | E) = p(G | E)u(A,G) + [1 - p(G | E)]u(A,¬G)
@@ -19,6 +19,22 @@ Where:
 - u(A,G): utility of intervening when needed
 - u(A,¬G): utility of intervening when not needed
 ```
+This approach is later updated in subsequent phases. The guiding equation for determining the display status and location of an intervention becomes:
+
+$$\text{DisplayStatus}(I_k, S) = \begin{cases} 
+\text{Panel} & \text{if } \text{Condition}(I_k) \land \text{Rank}(I_k, E_S) \le 3 \\
+\text{Inline} & \text{if } \text{Condition}(I_k) \land \text{Rank}(I_k, E_S) > 3 \\
+\text{Suppress} & \text{otherwise}
+\end{cases}$$
+
+where $\text{Condition}(I_k)$ is a logical statement that evaluates to True if the intervention $I_k$ meets its type-specific confidence requirement, and False otherwise:
+
+$$\text{Condition}(I_k) \equiv \begin{cases}
+P(G \mid E)_k > 0.8 & \text{if } \text{Type}_k = \text{Ambiguity Multiple Choice} \\
+0.6 < P(G \mid E)_k \le 0.8 & \text{if } \text{Type}_k = \text{Ambiguity Clarification} \\
+P(G \mid E)_k > 0.95 & \text{if } \text{Type}_k = \text{Consistency}
+\end{cases}$$
+
 ### Example Interventions
 
 <div style="display: flex; gap: 10px;">
